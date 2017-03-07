@@ -43,6 +43,7 @@ var Ring = function (log, config, api) {
 
   this.discoveries = {}
   this.doorbots = {}
+  this.stickup_cams = {}
 
   if (api) this.api.on('didFinishLaunching', this._didFinishLaunching.bind(this))
   else this._didFinishLaunching()
@@ -85,21 +86,21 @@ Ring.prototype._didFinishLaunching = function () {
   self.log('didFinishLaunching')
 }
 
-Ring.prototype._addAccessory = function (doorbot) {
+Ring.prototype._addAccessory = function (device) {
   var self = this
 
-  var accessory = new Accessory(doorbot.name, doorbot.uuid)
+  var accessory = new Accessory(device.name, device.uuid)
 
   accessory.on('identify', function (paired, callback) {
     self.log(accessory.displayName, ': identify request')
     callback()
   })
 
-  if (doorbot.attachAccessory.bind(doorbot)(accessory)) self.api.updatePlatformAccessories([ accessory ])
+  if (device.attachAccessory.bind(device)(accessory)) self.api.updatePlatformAccessories([ accessory ])
 
   if (!self.discoveries[accessory.UUID]) {
     self.api.registerPlatformAccessories('homebridge-platform-ring-video-doorbell', 'ring-video-doorbell', [ accessory ])
-    self.log('addAccessory', underscore.pick(doorbot, [ 'uuid', 'name', 'manufacturer', 'model', 'serialNumber' ]))
+    self.log('addAccessory', underscore.pick(device, [ 'uuid', 'name', 'manufacturer', 'model', 'serialNumber' ]))
   }
 }
 
@@ -236,13 +237,12 @@ Ring.prototype._refresh1 = function (callback) {
   function (err, response, result) {
     if (err) return callback(err)
 
-    if ((!result) || (!result.doorbots)) result = { doorbots: [] }
-    result.doorbots.forEach(function (service) {
+    var handle_device = function(proto, devices, service) {
       var capabilities, properties
-        , doorbotId = service.id
-        , doorbot = self.doorbots[doorbotId]
+        , deviceId = service.id
+        , device = devices[deviceId]
 
-      if (!doorbot) {
+      if (!device) {
         capabilities = underscore.pick(sensorTypes,
                                        [ 'battery_level', 'battery_low', 'motion_detected', 'reachability', 'ringing' ])
         properties = { name             : service.description
@@ -253,18 +253,25 @@ Ring.prototype._refresh1 = function (callback) {
                      , hardwareRevision : ''
                      }
 
-        doorbot = new Doorbot(self, service.device_id, { capabilities: capabilities, properties: properties })
-        self.doorbots[doorbotId] = doorbot
+        device = new proto(self, service.device_id, { capabilities: capabilities, properties: properties })
+        devices[deviceId] = device
       }
 
-      doorbot.readings = { battery_level : service.battery_life
+      device.readings = { battery_level : service.battery_life
                          , battery_low   : (service.alerts) && (service.alerts.battery == 'low')
                                                ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
                                                : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
                          , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
                          }
-      doorbot._update.bind(doorbot)(doorbot.readings)
-    })
+      device._update.bind(device)(device.readings)
+    }
+
+    if (!result) result = {}
+    if (!result.doorbots) result.doorbots = []
+    result.doorbots.forEach(function (service) { handle_device(Doorbot, self.doorbots, service) })
+
+    if (!result.stickup_cams) result.stickup_cams = []
+    result.stickup_cams.forEach(function (service) { handle_device(StickupCam, self.stickup_cams, service) })
 
     callback()
   })
@@ -312,27 +319,36 @@ Ring.prototype._refresh2 = function (callback) {
             { path: '/clients_api/dings/active' + query, headers: headers },
   function (err, response, result) {
     if (err) return callback(err)
-
+    
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
-    underscore.keys(self.doorbots).forEach(function (doorbotId) {          
-      underscore.extend(self.doorbots[doorbotId].readings, { motion_detected: false, ringing: false })
+    underscore.keys(self.doorbots).forEach(function (deviceId) {
+      underscore.extend(self.doorbots[deviceId].readings, { motion_detected: false, ringing: false })
     })
-    result.forEach(function (event) {
-      var doorbot
+    underscore.keys(self.stickup_cams).forEach(function (deviceId) {
+      underscore.extend(self.stickup_cams[deviceId].readings, { motion_detected: false, ringing: false })
+    })
+
+    result.forEach(function (event) { 
+      var device
 
       if (event.state !== 'ringing') return
       
-      doorbot = self.doorbots[event.doorbot_id]
-      if (!doorbot) return self.log.error('dings/active: no doorbot', event)
+      device = self.doorbots[event.doorbot_id] || self.stickup_cams[event.doorbot_id]
+      if (!device) return self.log.error('dings/active: no device', event)
 
-      underscore.extend(doorbot.readings, { motion_detected : (event.kind === 'motion') || (event.motion)
-                                          , ringing         : event.kind === 'ding' })
+      underscore.extend(device.readings, { motion_detected : (event.kind === 'motion') || (event.motion)
+                                         , ringing         : event.kind === 'ding' })
     })
-    underscore.keys(self.doorbots).forEach(function (doorbotId) {          
-      var doorbot = self.doorbots[doorbotId]
+    underscore.keys(self.doorbots).forEach(function (deviceId) {
+      var device = self.doorbots[deviceId]
 
-      doorbot._update.bind(doorbot)(doorbot.readings)
+      device._update.bind(device)(device.readings)
+    })
+    underscore.keys(self.stickup_cams).forEach(function (deviceId) {
+      var device = self.stickup_cams[deviceId]
+
+      device._update.bind(device)(device.readings)
     })
 
     callback()
@@ -340,9 +356,16 @@ Ring.prototype._refresh2 = function (callback) {
 }
 
 
-var Doorbot = function (platform, doorbotId, service) {
-  if (!(this instanceof Doorbot)) return new Doorbot(platform, doorbotId, service)
+var Doorbot = function (platform, deviceId, service) {
+  if (!(this instanceof Doorbot)) return new Doorbot(platform, deviceId, service)
 
-  PushSensor.call(this, platform, doorbotId, service)
+  PushSensor.call(this, platform, deviceId, service)
 }
-util.inherits(Doorbot, PushSensor);
+util.inherits(Doorbot, PushSensor)
+
+var StickupCam = function (platform, deviceId, service) {
+  if (!(this instanceof StickupCam)) return new StickupCam(platform, deviceId, service)
+
+  PushSensor.call(this, platform, deviceId, service)
+}
+util.inherits(StickupCam, PushSensor)
