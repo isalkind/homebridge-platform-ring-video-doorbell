@@ -53,6 +53,15 @@ Ring.prototype._didFinishLaunching = function () {
   var self = this
 
   self._login(function () {
+    var retry2 = function () {
+      self._refresh2.bind(self)(function (err) {
+        if (!err) return setTimeout(retry2, self.options.ttl * 1000)
+
+        self.log.error('refresh2 error: ' + err.toString())
+        setTimeout(retry2, 5 * 60 * 1000)
+      })
+    }
+
     self._refresh1(function (err) {
       if (err) {
         self.log.error('refresh1 error: ' + err.toString())
@@ -76,9 +85,7 @@ Ring.prototype._didFinishLaunching = function () {
           if (err) self.log.error('refresh1 error: ' + err.toString())
         }) }, 5 * 60 * 1000)
 
-        setInterval(function () { self._refresh2.bind(self)(function (err) {
-          if (err) self.log.error('refresh2 error: ' + err.toString())
-        }) }, self.options.ttl * 1000)
+        setTimeout(retry2, self.options.ttl * 1000)
       })
     })
   })
@@ -157,7 +164,7 @@ Ring.prototype.configureAccessory = function (accessory) {
 
 Ring.prototype._login = function (callback) {
   var self = this
-  
+
   var headers =
       { Authorization     : 'Basic ' + new Buffer(self.config.username + ':' + self.config.password).toString('base64')
       , Accept            : '*/*'
@@ -210,7 +217,7 @@ Ring.prototype._login = function (callback) {
 , "longitude"           : -98.585522
 , "address"             : ".... .... .., Lebanon, KS 66952 USA"
 , "owned"               : true
-, "alerts"              : 
+, "alerts"              :
   { "connection"        : "offline"
   , "battery"           : "low"
   }
@@ -235,6 +242,8 @@ Ring.prototype._refresh1 = function (callback) {
   roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options),
             { path: '/clients_api/ring_devices' + query, headers: headers },
   function (err, response, result) {
+    var serialNumbers = []
+
     if (err) return callback(err)
 
     var handle_device = function(proto, devices, service) {
@@ -258,20 +267,40 @@ Ring.prototype._refresh1 = function (callback) {
       }
 
       device.readings = { battery_level : service.battery_life
-                         , battery_low   : (service.alerts) && (service.alerts.battery == 'low')
-                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
-                                               : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
-                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
-                         }
+                        , battery_low   : (service.alerts) && (service.alerts.battery == 'low')
+                                              ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
+                                              : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
+                        , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
+                        }
       device._update.bind(device)(device.readings)
+
+      serialNumbers.push(service.id.toString())
+    }
+    var check_devices = function (devices) {
+      underscore.keys(devices).forEach(function (deviceId) {
+        var device = devices[deviceId]
+        var accessory = device.accessory
+
+        if (serialNumbers.indexOf(device.serialNumber) !== -1) return
+
+        if (accessory) {
+          self.api.registerPlatformAccessories('homebridge-platform-ring-video-doorbell', 'ring-video-doorbell', [ accessory ])
+          self.log('removeAccessory', underscore.pick(device, [ 'uuid', 'name', 'manufacturer', 'model', 'serialNumber' ]))
+        }
+
+        delete devices[deviceId]
+      })
     }
 
     if (!result) result = {}
+
     if (!result.doorbots) result.doorbots = []
     result.doorbots.forEach(function (service) { handle_device(Doorbot, self.doorbots, service) })
+    check_devices(self.doorbots)
 
     if (!result.stickup_cams) result.stickup_cams = []
     result.stickup_cams.forEach(function (service) { handle_device(StickupCam, self.stickup_cams, service) })
+    check_devices(self.stickup_cams)
 
     callback()
   })
@@ -315,11 +344,11 @@ Ring.prototype._refresh2 = function (callback) {
       }
     , query = '?' + querystring.stringify({ api_version: '9', auth_token: self.profile.authentication_token })
 
-  roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options), 
+  roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options),
             { path: '/clients_api/dings/active' + query, headers: headers },
   function (err, response, result) {
     if (err) return callback(err)
-    
+
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.doorbots).forEach(function (deviceId) {
@@ -329,11 +358,11 @@ Ring.prototype._refresh2 = function (callback) {
       underscore.extend(self.stickup_cams[deviceId].readings, { motion_detected: false, ringing: false })
     })
 
-    result.forEach(function (event) { 
+    result.forEach(function (event) {
       var device
 
       if (event.state !== 'ringing') return
-      
+
       device = self.doorbots[event.doorbot_id] || self.stickup_cams[event.doorbot_id]
       if (!device) return self.log.error('dings/active: no device', event)
 
