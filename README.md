@@ -35,6 +35,14 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
     , "options"   : { "ttl": 4, "verboseP" : false }
     }
 
+# Camera Integration
+The current version of this plugin doesn't handle the camera available in the Ring Video doorbell;
+however,
+as noted by [@barkerja](https://github.com/barkerja),
+you can use the [camera plugin](https://github.com/KhaosT/homebridge-camera-ffmpeg),
+and place both accessories in the same "room".
+HomeKit manage the two accessories as one "seamless" device.
+
 # Many Thanks
 Many thanks to [jeroenmoors](https://github.com/jeroenmoors) author of
 [php-ring-api](https://github.com/jeroenmoors/php-ring-api).
