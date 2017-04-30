@@ -34,8 +34,10 @@ module.exports = function (homebridge) {
 var Ring = function (log, config, api) {
   if (!(this instanceof Ring)) return new Ring(log, config, api)
 
+  if (!config) return
+
   this.log = log
-  this.config = config || { platform: 'ring-video-doorbell' }
+  this.config = config
   this.api = api
 
   this.location = this.config.location || url.parse('https://api.ring.com')
