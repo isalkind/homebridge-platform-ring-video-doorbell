@@ -2,11 +2,10 @@
 
 // there is no known webhook/websocket to use for events, this results in very frequent polling under the push-sensor model...
 
-var homespun    = require('homespun-discovery')
-  , querystring = require('querystring')
+var doorbot     = require('doorbot')
+  , homespun    = require('homespun-discovery')
   , pushsensor  = homespun.utilities.pushsensor
   , PushSensor  = pushsensor.Sensor
-  , roundTrip   = homespun.utilities.roundtrip
   , sensorTypes = homespun.utilities.sensortypes
   , underscore  = require('underscore')
   , url         = require('url')
@@ -54,7 +53,14 @@ var Ring = function (log, config, api) {
 Ring.prototype._didFinishLaunching = function () {
   var self = this
 
-  self._login(function () {
+  doorbot.authenticate(self.config.username, self.config.password, function (err, token) {
+    if (err) {
+      self.log.error('login', underscore.extend({ username: self.config.username }, err))
+      return setTimeout(self._didFinishLaunching.bind(self), 30 * 1000)
+    }
+
+    self.token = token
+
     var retry2 = function () {
       self._refresh2.bind(self)(function (err) {
         if (!err) return setTimeout(retry2, self.options.ttl * 1000)
@@ -64,6 +70,7 @@ Ring.prototype._didFinishLaunching = function () {
       })
     }
 
+   
     self._refresh1(function (err) {
       if (err) {
         self.log.error('refresh1 error: ' + err.toString())
@@ -130,120 +137,48 @@ Ring.prototype.configureAccessory = function (accessory) {
 }
 
 /*
-{ profile                              :
-  { id                                 : ...
-  , email                              : "user@example.com"
-  , first_name                         : null
-  , last_name                          : null
-  , phone_number                       : null
-  , authentication_token               : "..."
-  , features                           :
-    { remote_logging_format_storing    : false
-    , remote_logging_level             : 1
-    , subscriptions_enabled            : true
-    , stickupcam_setup_enabled         : true
-    , vod_enabled                      : false
-    , nw_enabled                       : true
-    , nw_user_activated                : false
-    , ringplus_enabled                 : true
-    , lpd_enabled                      : true
-    , reactive_snoozing_enabled        : false
-    , proactive_snoozing_enabled       : false
-    , owner_proactive_snoozing_enabled : true
-    , live_view_settings_enabled       : false
-    , delete_all_settings_enabled      : false
-    , power_cable_enabled              : false
-    , device_health_alerts_enabled     : true
-    , chime_pro_enabled                : true
-    , multiple_calls_enabled           : true
-    , ujet_enabled                     : false
-    , multiple_delete_enabled          : false
-    , delete_all_enabled               : false
+{ "doorbots"              :
+  { "id"                  : ...
+  , "description"         : "Front Gate"
+  , "device_id"           : "..."
+  , "time_zone"           : "America\/Chicago"
+  , "subscribed"          : true
+  , "subscribed_motions"  : true
+  , "battery_life"        : 20
+  , "external_connection" : false
+  , "firmware_version"    : "1.8.73"
+  , "kind"                : "doorbell"
+  , "latitude"            : 39.8333333
+  , "longitude"           : -98.585522
+  , "address"             : ".... .... .., Lebanon, KS 66952 USA"
+  , "settings"            : { ... }
+  , "features"            :
+    { "motions_enabled"   : true
+    , "show_recordings"   : true
+    , "show_vod_settings": true
+    }
+  , "owned"               : true
+  , "alerts"              :
+    { "connection"        : "offline"
+    , "battery"           : "low"
+    }
+  , "owner"               :
+    { "id"                : ...
+    , "first_name"        : null
+    , "last_name"         : null
+    , "email"             : "user@example.com"
     }
   }
-}
-*/
-
-Ring.prototype._login = function (callback) {
-  var self = this
-
-  var headers =
-      { Authorization     : 'Basic ' + new Buffer(self.config.username + ':' + self.config.password).toString('base64')
-      , Accept            : '*/*'
-      , 'User-Agent'      : 'Dalvik/1.6.0 (Linux; U; Android 4.4.4; Build/KTU84Q)'
-      , 'content-type'    : 'application/x-www-form-urlencoded; charset=UTF-8'
-      }
-    , payload =
-      { 'device[os]'                             : 'android'
-      , 'device[hardware_id]'                    : '180940d0-7285-3366-8c64-6ea91491982c'
-      , 'device[app_brand]'                      : 'ring'
-      , 'device[metadata][device_model]'         : 'VirtualBox'
-      , 'device[metadata][resolution]'           : '600x800'
-      , 'device[metadata][app_version]'          : '1.7.29'
-      , 'device[metadata][app_instalation_date]' : ''
-      , 'device[metadata][os_version]'           : '4.4.4'
-      , 'device[metadata][manufacturer]'         : 'innotek GmbH'
-      , 'device[metadata][is_tablet]'            : 'true'
-      , 'device[metadata][linphone_initialized]' : 'true'
-      , 'device[metadata][language]'             : 'en'
-      , api_version                              : '9'
-      }
-
-  roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options),
-            { method: 'POST', path: '/clients_api/session', headers: headers, payload: querystring.stringify(payload) },
-  function (err, response, result) {
-    if (err) {
-      self.log.error('login', underscore.extend({ username: self.config.username }, err))
-      return setTimeout(function () { self._login.bind(self)(callback) }, 30 * 1000)
-    }
-
-    self.profile = result.profile
-    if ((!self.profile) || (!self.profile.authentication_token)) return callback(new Error('invalid session response'))
-
-    callback()
-  })
-}
-
-/*
-{ "id"                  : ...
-, "description"         : "Front Gate"
-, "device_id"           : "..."
-, "time_zone"           : "America\/Chicago"
-, "subscribed"          : true
-, "subscribed_motions"  : true
-, "battery_life"        : 20
-, "external_connection" : false
-, "firmware_version"    : "1.7.189"
-, "kind"                : "doorbell"
-, "latitude"            : 39.8333333
-, "longitude"           : -98.585522
-, "address"             : ".... .... .., Lebanon, KS 66952 USA"
-, "owned"               : true
-, "alerts"              :
-  { "connection"        : "offline"
-  , "battery"           : "low"
-  }
-, "owner"               :
-  { "id"                : ...
-  , "first_name"        : null
-  , "last_name"         : null
-  , "email"             : "user@example.com"
-  }
+, "authorized_doorbots"   : [ ... ]
+, "chimes"                : [ ... ]
+, "stickup_cams"          : [ ... ]
 }
  */
 
 Ring.prototype._refresh1 = function (callback) {
   var self = this
 
-  var headers =
-      { Accept            : '*/*'
-      , 'User-Agent'      : 'Dalvik/1.6.0 (Linux; U; Android 4.4.4; Build/KTU84Q)'
-      }
-    , query = '?' + querystring.stringify({ api_version: '9', auth_token: self.profile.authentication_token })
-
-  roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options),
-            { path: '/clients_api/ring_devices' + query, headers: headers },
-  function (err, response, result) {
+  doorbot.devices(self.token, function (err, result) {
     var serialNumbers = []
 
     if (err) return callback(err)
@@ -312,12 +247,14 @@ Ring.prototype._refresh1 = function (callback) {
 [
   {
     "id"                     : ...,
+    "id_str"                 : "...",
     "state"                  : "ringing",
     "protocol"               : "sip",
     "doorbot_id"             : ...,
     "doorbot_description"    : "Front Gate",
     "device_kind"            : "doorbell",
     "motion"                 : false,
+    "snapshot_url"           : "",
     "kind"                   : "ding",
     "sip_server_ip"          : "a.b.c.d"
     "sip_server_port"        : "15063",
@@ -340,15 +277,7 @@ Ring.prototype._refresh1 = function (callback) {
 Ring.prototype._refresh2 = function (callback) {
   var self = this
 
-  var headers =
-      { Accept            : '*/*'
-      , 'User-Agent'      : 'Dalvik/1.6.0 (Linux; U; Android 4.4.4; Build/KTU84Q)'
-      }
-    , query = '?' + querystring.stringify({ api_version: '9', auth_token: self.profile.authentication_token })
-
-  roundTrip(underscore.defaults({ location: self.location, logger: self.log }, self.options),
-            { path: '/clients_api/dings/active' + query, headers: headers },
-  function (err, response, result) {
+  doorbot.dings(self.token, function (err, result) {
     if (err) return callback(err)
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))

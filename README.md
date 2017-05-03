@@ -46,3 +46,6 @@ HomeKit manage the two accessories as one "seamless" device.
 # Many Thanks
 Many thanks to [jeroenmoors](https://github.com/jeroenmoors) author of
 [php-ring-api](https://github.com/jeroenmoors/php-ring-api).
+
+Many thank (also) to [davglass](https://github.com/davglass) author of
+[doorbot](https://github.com/davglass/doorbot).
