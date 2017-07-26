@@ -8,7 +8,6 @@ var doorbot     = require('doorbot')
   , PushSensor  = pushsensor.Sensor
   , sensorTypes = homespun.utilities.sensortypes
   , underscore  = require('underscore')
-  , url         = require('url')
   , util        = require('util')
 
 
@@ -39,8 +38,7 @@ var Ring = function (log, config, api) {
   this.config = config
   this.api = api
 
-  this.location = this.config.location || url.parse('https://api.ring.com')
-  this.options = underscore.defaults(this.config.options || {}, { ttl: 4, verboseP: false })
+  this.options = underscore.defaults(this.config.options || {}, { ttl: 5, verboseP: false })
 
   this.discoveries = {}
   this.doorbots = {}
