@@ -32,7 +32,7 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
     , "password"  : "secret"
 
     // optional, here are the defaults
-    , "options"   : { "ttl": 5, "verboseP" : false }
+    , "options"   : { "retries": 15, "ttl": 5, "verboseP" : false }
     }
 
 # Camera Integration

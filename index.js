@@ -2,10 +2,10 @@
 
 // there is no known webhook/websocket to use for events, this results in very frequent polling under the push-sensor model...
 
-var doorbot     = require('doorbot')
-  , homespun    = require('homespun-discovery')
+var homespun    = require('homespun-discovery')
   , pushsensor  = homespun.utilities.pushsensor
   , PushSensor  = pushsensor.Sensor
+  , RingAPI     = require('doorbot')
   , sensorTypes = homespun.utilities.sensortypes
   , underscore  = require('underscore')
   , util        = require('util')
@@ -38,7 +38,7 @@ var Ring = function (log, config, api) {
   this.config = config
   this.api = api
 
-  this.options = underscore.defaults(this.config.options || {}, { ttl: 5, verboseP: false })
+  this.options = underscore.defaults(this.config.options || {}, { retries: 15, ttl: 5, verboseP: false })
 
   this.discoveries = {}
   this.doorbots = {}
@@ -51,51 +51,31 @@ var Ring = function (log, config, api) {
 Ring.prototype._didFinishLaunching = function () {
   var self = this
 
-  doorbot.authenticate(self.config.username, self.config.password, function (err, token) {
-    if (err) {
-      self.log.error('login', underscore.extend({ username: self.config.username }, err))
-      return setTimeout(self._didFinishLaunching.bind(self), 30 * 1000)
-    }
+  var refresh = function () {
+    var ring = RingAPI({ email     : self.config.username
+                       , password  : self.config.password
+                       , retries   : self.options.retries
+                       , userAgent : self.options.userAgent
+                       })
 
-    self.token = token
-
-    var retry2 = function () {
-      self._refresh2.bind(self)(function (err) {
-        if (!err) return setTimeout(retry2, self.options.ttl * 1000)
-
-        self.log.error('refresh2 error: ' + err.toString())
-        setTimeout(retry2, 5 * 60 * 1000)
-      })
-    }
-
-   
-    self._refresh1(function (err) {
+    self._refresh1(ring, function (err) {
       if (err) {
-        self.log.error('refresh1 error: ' + err.toString())
-        throw err
+        self.log.error('refresh1', underscore.extend({ username: self.config.username }, err))
+        return setTimeout(refresh, 30 * 1000)
       }
 
-      self._refresh2(function (err) {
+      self._refresh2(ring, function (err) {
         if (err) {
-          self.log.error('refresh2 error: ' + err.toString())
-          throw err
+          self.log.error('refresh2', underscore.extend({ username: self.config.username }, err))
+          return setTimeout(refresh, 30 * 1000)
         }
 
-        underscore.keys(self.discoveries).forEach(function (uuid) {
-          var accessory = self.discoveries[uuid]
-
-          self.log.warn('accessory not discovered', { UUID: uuid })
-          accessory.updateReachability(false)
-        })
-
-        setInterval(function () { self._refresh1.bind(self)(function (err) {
-          if (err) self.log.error('refresh1 error: ' + err.toString())
-        }) }, 5 * 60 * 1000)
-
-        setTimeout(retry2, self.options.ttl * 1000)
+        return setTimeout(refresh, self.options.ttl * 1000)
       })
     })
-  })
+  }
+
+  refresh()
 
   self.log('didFinishLaunching')
 }
@@ -153,7 +133,7 @@ Ring.prototype.configureAccessory = function (accessory) {
   , "features"            :
     { "motions_enabled"   : true
     , "show_recordings"   : true
-    , "show_vod_settings": true
+    , "show_vod_settings" : true
     }
   , "owned"               : true
   , "alerts"              :
@@ -173,10 +153,10 @@ Ring.prototype.configureAccessory = function (accessory) {
 }
  */
 
-Ring.prototype._refresh1 = function (callback) {
+Ring.prototype._refresh1 = function (doorbot, callback) {
   var self = this
 
-  doorbot.devices(self.token, function (err, result) {
+  doorbot.devices(function (err, result) {
     var serialNumbers = []
 
     if (err) return callback(err)
@@ -272,10 +252,10 @@ Ring.prototype._refresh1 = function (callback) {
 ]
  */
 
-Ring.prototype._refresh2 = function (callback) {
+Ring.prototype._refresh2 = function (doorbot, callback) {
   var self = this
 
-  doorbot.dings(self.token, function (err, result) {
+  doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
