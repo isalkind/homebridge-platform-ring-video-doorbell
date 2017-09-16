@@ -19,7 +19,7 @@
   , "homebridge"                 : ">=0.4.16"
   }
 , "dependencies"                 :
-  { "doorbot"                    : "3.0.1"
+  { "doorbot"                    : "^3.0.1"
   , "hap-nodejs-community-types" : "https://github.com/homespun/hap-nodejs-community-types.git"
   , "homespun-discovery"         : "0.1.21"
   , "underscore"                 : "1.8.3"
