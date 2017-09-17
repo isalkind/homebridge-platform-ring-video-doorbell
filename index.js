@@ -38,7 +38,7 @@ var Ring = function (log, config, api) {
   this.config = config
   this.api = api
 
-  this.options = underscore.defaults(this.config.options || {}, { retries: 15, ttl: 5, verboseP: false })
+  this.options = underscore.defaults(this.config.options || {}, { retries: 5, ttl: 5, verboseP: false })
 
   this.discoveries = {}
   this.doorbots = {}
