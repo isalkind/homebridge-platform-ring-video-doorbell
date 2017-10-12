@@ -58,13 +58,14 @@ Ring.prototype._didFinishLaunching = function () {
                        , userAgent : self.options.userAgent
                        })
 
-    self._refresh1(ring, function (err) {
+    self.doorbot = ring
+    self._refresh1(function (err) {
       if (err) {
         self.log.error('refresh1', underscore.extend({ username: self.config.username }, err))
         return setTimeout(refresh, 30 * 1000)
       }
 
-      self._refresh2(ring, function (err) {
+      self._refresh2(function (err) {
         if (err) {
           self.log.error('refresh2', underscore.extend({ username: self.config.username }, err))
           return setTimeout(refresh, 30 * 1000)
@@ -153,10 +154,10 @@ Ring.prototype.configureAccessory = function (accessory) {
 }
  */
 
-Ring.prototype._refresh1 = function (doorbot, callback) {
+Ring.prototype._refresh1 = function (callback) {
   var self = this
 
-  doorbot.devices(function (err, result) {
+  self.doorbot.devices(function (err, result) {
     var serialNumbers = []
 
     if (err) return callback(err)
@@ -169,6 +170,7 @@ Ring.prototype._refresh1 = function (doorbot, callback) {
       if (!device) {
         capabilities = underscore.pick(sensorTypes,
                                        [ 'battery_level', 'battery_low', 'motion_detected', 'reachability', 'ringing' ])
+        if (service.led_status) underscore.extend(capabilities, underscore.pick(sensorTypes, [ 'light_bulb' ]))
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
                      , model            : service.kind
@@ -186,6 +188,7 @@ Ring.prototype._refresh1 = function (doorbot, callback) {
                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
                                               : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
+                        , light_bulb    : !service.led_status ? undefined : service.led_status !== 'off'
                         }
       device._update.bind(device)(device.readings)
 
@@ -214,6 +217,9 @@ Ring.prototype._refresh1 = function (doorbot, callback) {
     check_devices(self.doorbots)
 
     if (!result.stickup_cams) result.stickup_cams = []
+    console.log('---cut here---')
+    console.log(JSON.stringify(result.stickup_cams, null, 2))
+    console.log('---cut here---')
     result.stickup_cams.forEach(function (service) { handle_device(StickupCam, self.stickup_cams, service) })
     check_devices(self.stickup_cams)
 
@@ -252,10 +258,10 @@ Ring.prototype._refresh1 = function (doorbot, callback) {
 ]
  */
 
-Ring.prototype._refresh2 = function (doorbot, callback) {
+Ring.prototype._refresh2 = function (callback) {
   var self = this
 
-  doorbot.dings(function (err, result) {
+  self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
@@ -302,8 +308,28 @@ var Doorbot = function (platform, deviceId, service) {
 util.inherits(Doorbot, PushSensor)
 
 var StickupCam = function (platform, deviceId, service) {
+  var self = this
+
   if (!(this instanceof StickupCam)) return new StickupCam(platform, deviceId, service)
 
+  var lightBulb
+
   PushSensor.call(this, platform, deviceId, service)
+  
+  lightBulb = self.getAccessoryService(Service.Lightbulb)
+  if (lightBulb) {
+    lightBulb.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
+      platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
+                                                       function (err, response, result) {/* jshint unused: false */
+        if (err) {
+          self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
+        } else {
+          self._update.bind(self)({ light_bulb: value })
+        }
+       
+        callback()
+      })
+    }.bind(this))
+  } else self.log.error('getAccessoryService', { service: Service.Lightbulb })
 }
 util.inherits(StickupCam, PushSensor)
