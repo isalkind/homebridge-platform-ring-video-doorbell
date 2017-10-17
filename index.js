@@ -169,8 +169,9 @@ Ring.prototype._refresh1 = function (callback) {
 
       if (!device) {
         capabilities = underscore.pick(sensorTypes,
-                                       [ 'battery_level', 'battery_low', 'motion_detected', 'reachability', 'ringing' ])
-        if (service.led_status) underscore.extend(capabilities, underscore.pick(sensorTypes, [ 'light_bulb' ]))
+                                       [ 'battery_level', 'battery_low', 'motion_detected', 'reachability' ])
+        underscore.extend(capabilities, underscore.pick(sensorTypes,
+                                                        [ (service.kind === 'doorbell') ? 'ringing' : 'floodlight' ]))
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
                      , model            : service.kind
@@ -188,7 +189,7 @@ Ring.prototype._refresh1 = function (callback) {
                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
                                               : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
-                        , light_bulb    : !service.led_status ? undefined : service.led_status !== 'off'
+                        , floodlight    : !service.led_status ? undefined : service.led_status !== 'off'
                         }
       device._update.bind(device)(device.readings)
 
@@ -217,9 +218,6 @@ Ring.prototype._refresh1 = function (callback) {
     check_devices(self.doorbots)
 
     if (!result.stickup_cams) result.stickup_cams = []
-    console.log('---cut here---')
-    console.log(JSON.stringify(result.stickup_cams, null, 2))
-    console.log('---cut here---')
     result.stickup_cams.forEach(function (service) { handle_device(StickupCam, self.stickup_cams, service) })
     check_devices(self.stickup_cams)
 
@@ -269,9 +267,6 @@ Ring.prototype._refresh2 = function (callback) {
     underscore.keys(self.doorbots).forEach(function (deviceId) {
       underscore.extend(self.doorbots[deviceId].readings, { motion_detected: false, ringing: false })
     })
-    underscore.keys(self.stickup_cams).forEach(function (deviceId) {
-      underscore.extend(self.stickup_cams[deviceId].readings, { motion_detected: false, ringing: false })
-    })
 
     result.forEach(function (event) {
       var device
@@ -312,24 +307,24 @@ var StickupCam = function (platform, deviceId, service) {
 
   if (!(this instanceof StickupCam)) return new StickupCam(platform, deviceId, service)
 
-  var lightBulb
+  var floodlight
 
   PushSensor.call(this, platform, deviceId, service)
   
-  lightBulb = self.getAccessoryService(Service.Lightbulb)
-  if (lightBulb) {
-    lightBulb.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
+  floodlight = self.getAccessoryService(Service.Floodlight)
+  if (floodlight) {
+    floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
       platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                        function (err, response, result) {/* jshint unused: false */
         if (err) {
           self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
         } else {
-          self._update.bind(self)({ light_bulb: value })
+          self._update.bind(self)({ floodlight: value })
         }
        
         callback()
       })
     }.bind(this))
-  } else self.log.error('getAccessoryService', { service: Service.Lightbulb })
+  }
 }
 util.inherits(StickupCam, PushSensor)
