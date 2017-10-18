@@ -311,20 +311,20 @@ var StickupCam = function (platform, deviceId, service) {
 
   PushSensor.call(this, platform, deviceId, service)
   
-  floodlight = self.getAccessoryService(Service.Floodlight)
-  if (floodlight) {
-    floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
-      platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
-                                                       function (err, response, result) {/* jshint unused: false */
-        if (err) {
-          self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
-        } else {
-          self._update.bind(self)({ floodlight: value })
-        }
+  floodlight = self.getAccessoryService(Service.Lightbulb)
+  if (!floodlight) return self.log.warn('StickupCam', { err: 'could not find Service.Lightbulb' })
+
+  floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
+    platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
+                                                     function (err, response, result) {/* jshint unused: false */
+      if (err) {
+        self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
+      } else {
+        self._update.bind(self)({ floodlight: value })
+      }
        
-        callback()
-      })
-    }.bind(this))
-  }
+      callback()
+    })
+  })
 }
 util.inherits(StickupCam, PushSensor)
