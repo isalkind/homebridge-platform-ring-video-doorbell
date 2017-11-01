@@ -168,10 +168,11 @@ Ring.prototype._refresh1 = function (callback) {
         , device = devices[deviceId]
 
       if (!device) {
+        console.log('type: ' + ((devices === self.doorbots) ? 'ringing' : 'floodlight') + ' ... ' + JSON.stringify(service, null, 2))
         capabilities = underscore.pick(sensorTypes,
                                        [ 'battery_level', 'battery_low', 'motion_detected', 'reachability' ])
         underscore.extend(capabilities, underscore.pick(sensorTypes,
-                                                        [ (service.kind === 'doorbell') ? 'ringing' : 'floodlight' ]))
+                                                        [ (devices === self.doorbots) ? 'ringing' : 'floodlight' ]))
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
                      , model            : service.kind
@@ -180,7 +181,7 @@ Ring.prototype._refresh1 = function (callback) {
                      , hardwareRevision : ''
                      }
 
-        device = new proto(self, service.device_id, { capabilities: capabilities, properties: properties })
+        device = new proto(self, service.id.toString(), { capabilities: capabilities, properties: properties })
         devices[deviceId] = device
       }
 
@@ -314,9 +315,12 @@ var StickupCam = function (platform, deviceId, service) {
   floodlight = self.getAccessoryService(Service.Lightbulb)
   if (!floodlight) return self.log.warn('StickupCam', { err: 'could not find Service.Lightbulb' })
 
+  console.log('!!! setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
+    console.log('!!! set value to ' + JSON.stringify(value))
     platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                      function (err, response, result) {/* jshint unused: false */
+      console.log('!!! result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
         self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
       } else {
@@ -325,6 +329,8 @@ var StickupCam = function (platform, deviceId, service) {
        
       callback()
     })
+    console.log('!!! setting value to ' + JSON.stringify(value))
   })
+  console.log('!!! callback for on/off is now set')
 }
 util.inherits(StickupCam, PushSensor)
