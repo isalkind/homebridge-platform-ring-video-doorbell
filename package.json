@@ -1,5 +1,5 @@
 { "name"                         : "homebridge-platform-ring-video-doorbell"
-, "version"                      : "0.6.2"
+, "version"                      : "0.6.5"
 , "description"                  : "A Ring Video Doorbell platform plugin for Homebridge: https://github.com/nfarina/homebridge"
 , "author"                       :
   { "name"                       : "Marshall Rose"
