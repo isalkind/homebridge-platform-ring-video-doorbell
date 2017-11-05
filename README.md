@@ -23,6 +23,14 @@ and try
 
 again!
 
+NB: If you install homebridge like this:
+
+    sudo npm install -g --unsafe-perm homebridge
+
+Then all subsequent installations must be like this:
+
+    sudo npm install -g --unsafe-perm homebridge-platform-ring-video-doorbell
+
 # Configuration
 Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
 
