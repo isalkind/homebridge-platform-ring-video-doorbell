@@ -317,7 +317,11 @@ var StickupCam = function (platform, deviceId, service) {
 
   console.log('!!! setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
+    console.log('!!! readings=' + JSON.stringify(self.readings, null, 2))
     console.log('!!! set value to ' + JSON.stringify(value))
+    if (self.readings.floodlight == value) return callback()
+
+    self.readings.floodlight = value
     platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                      function (err, response, result) {/* jshint unused: false */
       console.log('!!! result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
