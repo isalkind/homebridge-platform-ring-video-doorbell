@@ -171,6 +171,7 @@ Ring.prototype._refresh1 = function (callback) {
     var serialNumbers = []
 
     if (err) return callback(err)
+    console.log('\nhello')
 
     var handle_device = function(proto, kind, service) {
       var capabilities, properties, types
@@ -215,6 +216,10 @@ Ring.prototype._refresh1 = function (callback) {
 
     if (!result) return callback()
 
+    console.log('\n')
+    underscore.keys(result).forEach(function (container) {
+      console.log('!!! container ' + container + '=' + result[container].length + ' entries')
+    })
     if (result.doorbots) result.doorbots.forEach(function (service) { handle_device(Doorbot, 'doorbell', service) })
     if (result.chimes) result.chimes.forEach(function (service) { handle_device(Chime, 'chime', service) })
     if (result.stickup_cams) result.stickup_cams.forEach(function (service) { handle_device(Camera, 'camera', service) })
