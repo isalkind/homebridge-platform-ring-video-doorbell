@@ -184,7 +184,9 @@ Ring.prototype._refresh1 = function (callback) {
           types = [ ]
         }
         if (types.length === 0) types = prototypes[kind]
-        console.log('\n!!!name=' + service.description + ' kind=' + kind + ' types=' + JSON.stringify(types))
+        console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
+                    ' types=' + JSON.stringify(types) +
+                    ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
         capabilities = underscore.pick(sensorTypes, types)
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
@@ -270,7 +272,7 @@ Ring.prototype._refresh2 = function (callback) {
 
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
-    console.log('\n!!!dings=' + JSON.stringify(result, null, 2))
+    console.log('\n!!! dings=' + JSON.stringify(result, null, 2))
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
