@@ -42,7 +42,8 @@ var Ring = function (log, config, api) {
 
   this.discoveries = {}
   this.doorbots = {}
-  this.stickup_cams = {}
+  this.chimes = {}
+  this.cameras = {}
 
   if (api) this.api.on('didFinishLaunching', this._didFinishLaunching.bind(this))
   else this._didFinishLaunching()
@@ -116,43 +117,53 @@ Ring.prototype.configureAccessory = function (accessory) {
 }
 
 /*
-{ "doorbots"              :
-  { "id"                  : ...
-  , "description"         : "Front Gate"
-  , "device_id"           : "..."
-  , "time_zone"           : "America\/Chicago"
-  , "subscribed"          : true
-  , "subscribed_motions"  : true
-  , "battery_life"        : 20
-  , "external_connection" : false
-  , "firmware_version"    : "1.8.73"
-  , "kind"                : "doorbell"
-  , "latitude"            : 39.8333333
-  , "longitude"           : -98.585522
-  , "address"             : ".... .... .., Lebanon, KS 66952 USA"
-  , "settings"            : { ... }
-  , "features"            :
-    { "motions_enabled"   : true
-    , "show_recordings"   : true
-    , "show_vod_settings" : true
+{ "doorbots"                     :
+  { "id"                         : ...
+  , "description"                : "Front Gate"
+  , "device_id"                  : "..."
+  , "time_zone"                  : "America\/Chicago"
+  , "subscribed"                 : true
+  , "subscribed_motions"         : true
+  , "battery_life"               : 0
+  , "external_connection"        : false
+  , "firmware_version"           : "Up to Date"
+  , "kind"                       : "jbox_v1"
+  , "latitude"                   : 39.8333333
+  , "longitude"                  : -98.585522
+  , "address"                    : ".... .... .., Lebanon, KS 66952 USA"
+  , "settings"                   : { ... }
+  , "features"                   : { ... }
+  , "owned"                      : true
+  , "alerts"                     :
+    { "connection"               : "offline"
+    , "battery"                  : "low"
     }
-  , "owned"               : true
-  , "alerts"              :
-    { "connection"        : "offline"
-    , "battery"           : "low"
-    }
-  , "owner"               :
-    { "id"                : ...
-    , "first_name"        : null
-    , "last_name"         : null
-    , "email"             : "user@example.com"
+  , "owner"                      :
+    { "id"                       : ...
+    , "first_name"               : "..."
+    , "last_name"                : "..."
+    , "email"                    : "user@example.com"
     }
   }
-, "authorized_doorbots"   : [ ... ]
-, "chimes"                : [ ... ]
-, "stickup_cams"          : [ ... ]
+, "authorized_doorbots"          : [ ... ]
+, "chimes"                       : [ ... ]
+, "stickup_cams"                 : [ ... ]
+, "base_stations"                : [ ... ]
 }
  */
+
+var kinds = {
+  chime     : [ ]
+, chime_pro : [ ]
+, jbox_v1   : [ 'ringing', 'motion_detected' ]
+, hp_cam_v1 : [ ]
+}
+
+var protos = {
+  camera    : [ 'battery_level', 'battery_low', 'floodlight', 'motion_detected' ]
+, chime     : [ 'battery_level', 'battery_low', 'ringing' ]
+, doorbell  : [ 'battery_level', 'battery_low', 'ringing', 'motion_detected' ]
+}
 
 Ring.prototype._refresh1 = function (callback) {
   var self = this
@@ -163,16 +174,21 @@ Ring.prototype._refresh1 = function (callback) {
     if (err) return callback(err)
 
     var handle_device = function(proto, devices, service) {
-      var capabilities, properties
+      var capabilities, kind, properties, types
         , deviceId = service.id
         , device = devices[deviceId]
 
       if (!device) {
-        console.log('type: ' + ((devices === self.doorbots) ? 'ringing' : 'floodlight') + ' ... ' + JSON.stringify(service, null, 2))
-        capabilities = underscore.pick(sensorTypes,
-                                       [ 'battery_level', 'battery_low', 'motion_detected', 'reachability' ])
-        underscore.extend(capabilities, underscore.pick(sensorTypes,
-                                                        [ (devices === self.doorbots) ? 'ringing' : 'floodlight' ]))
+        if (!service.kind) service.kind = ''
+        kind = (devices === self.doorbots) ? 'doorbell' : (devices === self.chimes) ? 'chime' : 'camera'
+        types = kinds[service.kind]
+        if (!types) {
+          self.log.warn(kind, { err: 'no entry for ' + service.kind})
+          types = [ ]
+        }
+        if (types.length === 0) types = protos[kind]
+        console.log('kind=' + kind + ' types=' + JSON.stringify(types))
+        capabilities = underscore.pick(sensorTypes, types)
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
                      , model            : service.kind
@@ -192,14 +208,14 @@ Ring.prototype._refresh1 = function (callback) {
                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
                         , floodlight    : !service.led_status ? undefined : service.led_status !== 'off'
                         }
-      device._update.bind(device)(device.readings)
+      device._update.bind(device)(device.readings, true)
 
       serialNumbers.push(service.id.toString())
     }
     var check_devices = function (devices) {
       underscore.keys(devices).forEach(function (deviceId) {
         var device = devices[deviceId]
-        var accessory = device.accessory
+          , accessory = device.accessory
 
         if (serialNumbers.indexOf(device.serialNumber) !== -1) return
 
@@ -218,9 +234,13 @@ Ring.prototype._refresh1 = function (callback) {
     result.doorbots.forEach(function (service) { handle_device(Doorbot, self.doorbots, service) })
     check_devices(self.doorbots)
 
-    if (!result.stickup_cams) result.stickup_cams = []
-    result.stickup_cams.forEach(function (service) { handle_device(StickupCam, self.stickup_cams, service) })
-    check_devices(self.stickup_cams)
+    if (!result.chimes) result.chimes = []
+    result.chimes.forEach(function (service) { handle_device(Chime, self.chimes, service) })
+    check_devices(self.chimes)
+
+    if (!result.cameras) result.cameras = []
+    result.cameras.forEach(function (service) { handle_device(Camera, self.cameras, service) })
+    check_devices(self.cameras)
 
     callback()
   })
@@ -262,11 +282,18 @@ Ring.prototype._refresh2 = function (callback) {
 
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
+//  console.log(JSON.stringify(result, null, 2))
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.doorbots).forEach(function (deviceId) {
       underscore.extend(self.doorbots[deviceId].readings, { motion_detected: false, ringing: false })
+    })
+    underscore.keys(self.chimes).forEach(function (deviceId) {
+      underscore.extend(self.chimes[deviceId].readings, { motion_detected: false, ringing: false })
+    })
+    underscore.keys(self.cameras).forEach(function (deviceId) {
+      underscore.extend(self.cameras[deviceId].readings, { motion_detected: false, ringing: false })
     })
 
     result.forEach(function (event) {
@@ -274,7 +301,7 @@ Ring.prototype._refresh2 = function (callback) {
 
       if (event.state !== 'ringing') return
 
-      device = self.doorbots[event.doorbot_id] || self.stickup_cams[event.doorbot_id]
+      device = self.doorbots[event.doorbot_id] || self.chimes[event.doorbot_id] || self.cameras[event.doorbot_id]
       if (!device) return self.log.error('dings/active: no device', event)
 
       underscore.extend(device.readings, { motion_detected : (event.kind === 'motion') || (event.motion)
@@ -283,12 +310,17 @@ Ring.prototype._refresh2 = function (callback) {
     underscore.keys(self.doorbots).forEach(function (deviceId) {
       var device = self.doorbots[deviceId]
 
-      device._update.bind(device)(device.readings)
+      device._update.bind(device)(device.readings, true)
     })
-    underscore.keys(self.stickup_cams).forEach(function (deviceId) {
-      var device = self.stickup_cams[deviceId]
+    underscore.keys(self.chimes).forEach(function (deviceId) {
+      var device = self.chimes[deviceId]
 
-      device._update.bind(device)(device.readings)
+      device._update.bind(device)(device.readings, true)
+    })
+    underscore.keys(self.cameras).forEach(function (deviceId) {
+      var device = self.cameras<[deviceId]
+
+      device._update.bind(device)(device.readings, true)
     })
 
     callback()
@@ -303,17 +335,24 @@ var Doorbot = function (platform, deviceId, service) {
 }
 util.inherits(Doorbot, PushSensor)
 
-var StickupCam = function (platform, deviceId, service) {
+var Chime = function (platform, deviceId, service) {
+  if (!(this instanceof Chime)) return new Chime(platform, deviceId, service)
+
+  PushSensor.call(this, platform, deviceId, service)
+}
+util.inherits(Chime, PushSensor)
+
+var Camera = function (platform, deviceId, service) {
   var self = this
 
-  if (!(this instanceof StickupCam)) return new StickupCam(platform, deviceId, service)
+  if (!(this instanceof Camera)) return new Camera(platform, deviceId, service)
 
   var floodlight
 
   PushSensor.call(this, platform, deviceId, service)
   
   floodlight = self.getAccessoryService(Service.Lightbulb)
-  if (!floodlight) return self.log.warn('StickupCam', { err: 'could not find Service.Lightbulb' })
+  if (!floodlight) return self.log.warn('Camera', { err: 'could not find Service.Lightbulb' })
 
   console.log('!!! setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
@@ -337,4 +376,4 @@ var StickupCam = function (platform, deviceId, service) {
   })
   console.log('!!! callback for on/off is now set')
 }
-util.inherits(StickupCam, PushSensor)
+util.inherits(Camera, PushSensor)
