@@ -155,6 +155,7 @@ var kinds = {
 , chime_pro : [ ]
 , jbox_v1   : [ 'ringing', 'motion_detected' ]
 , hp_cam_v1 : [ ]
+, lpd_v1    : [ 'ringing', 'motion_detected' ]
 }
 
 var prototypes = {
@@ -216,7 +217,7 @@ Ring.prototype._refresh1 = function (callback) {
 
     if (result.doorbots) result.doorbots.forEach(function (service) { handle_device(Doorbot, 'doorbell', service) })
     if (result.chimes) result.chimes.forEach(function (service) { handle_device(Chime, 'chime', service) })
-    if (result.cameras) result.cameras.forEach(function (service) { handle_device(Camera, 'camera', service) })
+    if (result.stickup_cams) result.stickup_cams.forEach(function (service) { handle_device(Camera, 'camera', service) })
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
