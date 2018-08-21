@@ -154,7 +154,7 @@ var kinds = {
   chime     : [ ]
 , chime_pro : [ ]
 , jbox_v1   : [ 'ringing', 'motion_detected' ]
-, hp_cam_v1 : [ ]
+, hp_cam_v1 : [ 'floodlight', 'motion_detected' ]
 , lpd_v1    : [ 'ringing', 'motion_detected' ]
 }
 
