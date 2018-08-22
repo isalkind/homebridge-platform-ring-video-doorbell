@@ -9,7 +9,7 @@ Run these commands:
 
 On Linux, you might see this output for the second command:
 
-    npm ERR! pcap2@3.0.4 install: node-gyp rebuild
+    npm ERR! pcap@2.0.0 install: node-gyp rebuild
     npm ERR! Exit status 1
     npm ERR!
 
@@ -39,9 +39,10 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
     , "username"  : "user@example.com"
     , "password"  : "secret"
 
-    // optional, here are the defaults
-    , "options"   : { "retries": 15, "ttl": 5, "verboseP" : false }
+    , "options"   : { "retries": 5, "ttl": 5, "verboseP" : false }
     }
+
+The `options` line contains defaults, so it's entirely optional.
 
 # Camera Integration
 The current version of this plugin doesn't handle the camera available in the Ring Video doorbell;

@@ -16,6 +16,7 @@
 | Ring Spotlight Cam Solar   | `cameras`   |
 | Ring Floodlight Cam        | `cameras`   | `hp_cam_v1`  |
 | |
+| Ring Alarm Keypad          |             |              |
 | Ring Contact Sensor        |             |              |
 | Ring Motion Detector       |             |              |
 | Ring Alarm Range Extender  |             |              |

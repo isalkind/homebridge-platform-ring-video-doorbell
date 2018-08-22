@@ -53,22 +53,26 @@ Ring.prototype._didFinishLaunching = function () {
   var self = this
 
   var refresh = function () {
-    var ring = RingAPI({ email     : self.config.username
-                       , password  : self.config.password
-                       , retries   : self.options.retries
-                       , userAgent : self.options.userAgent
-                       })
+    if (!self.doorbot) {
+      self.cycles = 0
+      self.doorbot = RingAPI({ email     : self.config.username
+                             , password  : self.config.password
+                             , retries   : self.options.retries
+                             , userAgent : self.options.userAgent
+                             })
+    }
 
-    self.doorbot = ring
     self._refresh1(function (err) {
       if (err) {
         self.log.error('refresh1', { username: self.config.username, diagnostic: err.toString() })
+        self.doorbot = null
         return setTimeout(refresh, 30 * 1000)
       }
 
       self._refresh2(function (err) {
         if (err) {
           self.log.error('refresh2', { username: self.config.username, diagnostic: err.toString() })
+          self.doorbot = null
           return setTimeout(refresh, 30 * 1000)
         }
 
@@ -174,6 +178,8 @@ var prototypes =
 
 Ring.prototype._refresh1 = function (callback) {
   var self = this
+
+  if (self.cycles++ % 10) return callback()
 
   self.doorbot.devices(function (err, result) {
     var serialNumbers = []
@@ -346,8 +352,8 @@ var Camera = function (platform, deviceId, service) {
 
     console.log('\n!!! set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
     self.readings.floodlight = value
-    platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
-                                                     function (err, response, result) {/* jshint unused: false */
+    self.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
+                                                 function (err, response, result) {/* jshint unused: false */
       console.log('\n!!! result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
         self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
