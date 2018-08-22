@@ -39,6 +39,8 @@ var Ring = function (log, config, api) {
   this.api = api
 
   this.options = underscore.defaults(this.config.options || {}, { retries: 5, ttl: 5, verboseP: false })
+  if (this.options.retries < 1) this.options.retries = 5
+  if (this.options.ttl < 1) this.options.ttl = 5
 
   this.discoveries = {}
   this.ringbots = {}
@@ -60,17 +62,17 @@ Ring.prototype._didFinishLaunching = function () {
     self.doorbot = ring
     self._refresh1(function (err) {
       if (err) {
-        self.log.error('refresh1', underscore.extend({ username: self.config.username }, err))
+        self.log.error('refresh1', { username: self.config.username, diagnostic: err.toString() })
         return setTimeout(refresh, 30 * 1000)
       }
 
       self._refresh2(function (err) {
         if (err) {
-          self.log.error('refresh2', underscore.extend({ username: self.config.username }, err))
+          self.log.error('refresh2', { username: self.config.username, diagnostic: err.toString() })
           return setTimeout(refresh, 30 * 1000)
         }
 
-        return setTimeout(refresh, self.options.ttl * 1000)
+        setTimeout(refresh, self.options.ttl * 1000)
       })
     })
   }
@@ -150,16 +152,22 @@ Ring.prototype.configureAccessory = function (accessory) {
 }
  */
 
-var kinds = {
-  chime     : [ ]
+var kinds =
+{ chime     : [ ]
 , chime_pro : [ ]
 , jbox_v1   : [ 'ringing', 'motion_detected' ]
 , hp_cam_v1 : [ 'floodlight', 'motion_detected' ]
 , lpd_v1    : [ 'ringing', 'motion_detected' ]
+/*
+, dpd_v3    : [ ]
+, dpd_v4    : [ ]
+, hp_cam_v2 : [ 'floodlight', 'motion_detected' ]
+, lpd_v2    : [ 'ringing', 'motion_detected' ]
+ */
 }
 
-var prototypes = {
-  camera    : [ 'battery_level', 'battery_low', 'floodlight', 'motion_detected' ]
+var prototypes =
+{ camera    : [ 'battery_level', 'battery_low', 'floodlight', 'motion_detected' ]
 , chime     : [ 'ringing' ]
 , doorbell  : [ 'battery_level', 'battery_low', 'ringing', 'motion_detected' ]
 }
@@ -171,9 +179,8 @@ Ring.prototype._refresh1 = function (callback) {
     var serialNumbers = []
 
     if (err) return callback(err)
-    console.log('\nhello')
 
-    var handle_device = function(proto, kind, service) {
+    var handle_device = function (proto, kind, service) {
       var capabilities, properties, types
         , deviceId = service.id
         , device = self.ringbots[deviceId]
@@ -189,6 +196,8 @@ Ring.prototype._refresh1 = function (callback) {
         console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
                     ' types=' + JSON.stringify(types) +
                     ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
+        if (!proto) return
+
         capabilities = underscore.pick(sensorTypes, types)
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
@@ -216,13 +225,10 @@ Ring.prototype._refresh1 = function (callback) {
 
     if (!result) return callback()
 
-    console.log('\n')
-    underscore.keys(result).forEach(function (container) {
-      console.log('!!! container ' + container + '=' + result[container].length + ' entries')
-    })
     if (result.doorbots) result.doorbots.forEach(function (service) { handle_device(Doorbot, 'doorbell', service) })
     if (result.chimes) result.chimes.forEach(function (service) { handle_device(Chime, 'chime', service) })
     if (result.stickup_cams) result.stickup_cams.forEach(function (service) { handle_device(Camera, 'camera', service) })
+    if (result.base_stations) result.base_stations.forEach(function (service) { handle_device(undefined, 'station', service) })
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
@@ -278,8 +284,8 @@ Ring.prototype._refresh2 = function (callback) {
 
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
-    console.log('\n!!! dings=' + JSON.stringify(result, null, 2))
 
+    console.log('\n!!! dings=' + JSON.stringify(result, null, 2))
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
@@ -336,10 +342,9 @@ var Camera = function (platform, deviceId, service) {
 
   console.log('\n!!! setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
-    console.log('\n!!! readings=' + JSON.stringify(self.readings, null, 2))
-    console.log('\n!!! set value to ' + JSON.stringify(value))
     if (self.readings.floodlight == value) return callback()
 
+    console.log('\n!!! set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
     self.readings.floodlight = value
     platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                      function (err, response, result) {/* jshint unused: false */
