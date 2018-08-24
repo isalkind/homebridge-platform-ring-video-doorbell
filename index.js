@@ -44,6 +44,7 @@ var Ring = function (log, config, api) {
 
   this.discoveries = {}
   this.ringbots = {}
+  this.lastdings = []
 
   if (api) this.api.on('didFinishLaunching', this._didFinishLaunching.bind(this))
   else this._didFinishLaunching()
@@ -291,24 +292,29 @@ Ring.prototype._refresh2 = function (callback) {
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
-    console.log('\n!!! dings=' + JSON.stringify(result, null, 2))
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       underscore.extend(self.ringbots[deviceId].readings, { motion_detected: false, ringing: false })
     })
 
+    var newdings = []
     result.forEach(function (event) {
       var device
 
-      if (event.state !== 'ringing') return
+      newdings.push(event.id_str)
+      if (((event.kind !== 'ding') && (event.kind !== 'motion'))
+            || (self.lastdings.indexOf(event.id_str) !== -1)) return
 
       device = self.ringbots[event.doorbot_id]
       if (!device) return self.log.error('dings/active: no device', event)
 
       underscore.extend(device.readings, { motion_detected : (event.kind === 'motion') || (event.motion)
-                                         , ringing         : event.kind === 'ding' })
+                                         , ringing         : event.kind === 'ding'
+                                         })
     })
+    self.lastdings = newdings
+
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
 
