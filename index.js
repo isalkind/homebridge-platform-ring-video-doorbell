@@ -191,18 +191,17 @@ Ring.prototype._refresh1 = function (callback) {
     if (err) return callback(err)
 
     var handle_device = function (proto, kind, service) {
-      var capabilities, properties, types
+      var capabilities, properties
         , deviceId = service.id
         , device = self.ringbots[deviceId]
+        , types = prototypes[kind]
 
       if (!device) {
         if (!service.kind) service.kind = ''
-        types = kinds[service.kind]
-        if (!types) {
-          self.log.warn(kind, { err: 'no entry for ' + service.kind})
-          types = [ ]
+        if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
+        if ((!service.battery_life) || (service.battery_life > 100)) {
+          types = underscore.difference(types, [ 'battery_level', 'battery_low'])
         }
-        if (types.length === 0) types = prototypes[kind]
         console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
                     ' types=' + JSON.stringify(types) +
                     ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
