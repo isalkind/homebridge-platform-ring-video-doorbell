@@ -1,6 +1,6 @@
 {
   "name": "homebridge-platform-ring-video-doorbell",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "A Ring Video Doorbell platform plugin for Homebridge: https://github.com/nfarina/homebridge",
   "author": {
     "name": "Marshall Rose",
@@ -27,6 +27,7 @@
     "homebridge": ">=0.4.16"
   },
   "dependencies": {
+    "debug": "~2.2.0",
     "doorbot": "^5.4.0",
     "hap-nodejs-community-types": "https://github.com/homespun/hap-nodejs-community-types.git",
     "homespun-discovery": "0.2.1",

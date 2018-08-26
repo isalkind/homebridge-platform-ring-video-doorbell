@@ -2,7 +2,8 @@
 
 // there is no known webhook/websocket to use for events, this results in very frequent polling under the push-sensor model...
 
-var homespun    = require('homespun-discovery')
+var debug       = require('debug')('ring-video-doorbell')
+  , homespun    = require('homespun-discovery')
   , pushsensor  = homespun.utilities.pushsensor
   , PushSensor  = pushsensor.Sensor
   , RingAPI     = require('doorbot')
@@ -160,14 +161,16 @@ Ring.prototype.configureAccessory = function (accessory) {
 var kinds =
 { chime     : [ ]
 , chime_pro : [ ]
-, jbox_v1   : [ 'ringing', 'motion_detected' ]
+, jbox_v1   : [ 'ringing',    'motion_detected' ]
 , hp_cam_v1 : [ 'floodlight', 'motion_detected' ]
-, lpd_v1    : [ 'ringing', 'motion_detected' ]
+, lpd_v1    : [ 'ringing',    'motion_detected' ]
 /*
 , dpd_v3    : [ ]
 , dpd_v4    : [ ]
 , hp_cam_v2 : [ 'floodlight', 'motion_detected' ]
 , lpd_v2    : [ 'ringing', 'motion_detected' ]
+, stickup_cam_v3 : [ ]
+, stickup_cam_v4 : [ ]
  */
 }
 
@@ -216,6 +219,11 @@ Ring.prototype._refresh1 = function (callback) {
 
         device = new proto(self, service.id.toString(), { capabilities: capabilities, properties: properties })
         self.ringbots[deviceId] = device
+/*
+        self.doorbot.vod({ id: deviceId }, function (err, result) {
+          console.log('vod: errP=' + (err && err.toString()) + ' result=' + JSON.stringify(result, null, 2))
+        })
+ */
       }
 
       device.readings = { battery_level : service.battery_life
@@ -292,6 +300,7 @@ Ring.prototype._refresh2 = function (callback) {
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
+    debug('dings' + result)
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
@@ -299,12 +308,13 @@ Ring.prototype._refresh2 = function (callback) {
     })
 
     var newdings = []
+    debug('lastdings', self.lastdings)
     result.forEach(function (event) {
       var device
 
       newdings.push(event.id_str)
       if (((event.kind !== 'ding') && (event.kind !== 'motion'))
-            || (self.lastdings.indexOf(event.id_str) !== -1)) return
+              || (self.lastdings.indexOf(event.id_str) !== -1)) return debug('skipping', event)
 
       device = self.ringbots[event.doorbot_id]
       if (!device) return self.log.error('dings/active: no device', event)
@@ -318,9 +328,11 @@ Ring.prototype._refresh2 = function (callback) {
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
 
+      console.log('!!! update ' + device.name + ': ' + JSON.stringify(device.readings, null, 2))
       device._update.bind(device)(device.readings, true)
     })
 
+    debug('lastdings', self.lastdings)
     callback()
   })
 }
@@ -352,15 +364,15 @@ var Camera = function (platform, deviceId, service) {
   floodlight = self.getAccessoryService(Service.Lightbulb)
   if (!floodlight) return self.log.warn('Camera', { err: 'could not find Service.Lightbulb' })
 
-  console.log('\n!!! setting callback for on/off')
+  debug('setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
     if (self.readings.floodlight == value) return callback()
 
-    console.log('\n!!! set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
+    debug ('set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
     self.readings.floodlight = value
     self.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                  function (err, response, result) {/* jshint unused: false */
-      console.log('\n!!! result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
+      debug('result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
         self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
       } else {
@@ -369,8 +381,8 @@ var Camera = function (platform, deviceId, service) {
        
       callback()
     })
-    console.log('\n!!! setting value to ' + JSON.stringify(value))
+    debug('setting value to ' + JSON.stringify(value))
   })
-  console.log('\n!!! callback for on/off is now set')
+  debug ('callback for on/off is now set')
 }
 util.inherits(Camera, PushSensor)
