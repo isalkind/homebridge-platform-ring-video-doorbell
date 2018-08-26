@@ -300,7 +300,7 @@ Ring.prototype._refresh2 = function (callback) {
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
-    debug('dings' + result)
+    debug('dings', result)
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
@@ -372,7 +372,7 @@ var Camera = function (platform, deviceId, service) {
     self.readings.floodlight = value
     self.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                  function (err, response, result) {/* jshint unused: false */
-      debug('result from doorbot.' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
+      debug('result from doorbot ' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
         self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
       } else {
