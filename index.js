@@ -370,7 +370,7 @@ var Camera = function (platform, deviceId, service) {
     if (!self.doorbot) {
       var err = new Error('not presently connected to service')
 
-      self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
+      self.log.error('setValue', { deviceId: deviceId, diagnostic: err.toString() })
       return callback(err)
     }
 
@@ -380,7 +380,7 @@ var Camera = function (platform, deviceId, service) {
                                                  function (err, response, result) {/* jshint unused: false */
       debug('result from doorbot ' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
-        self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
+        self.log.error('setValue', { deviceId: deviceId, diagnostic: err.toString() })
       } else {
         self._update.bind(self)({ floodlight: value })
       }
