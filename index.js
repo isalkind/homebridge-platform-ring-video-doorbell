@@ -68,6 +68,7 @@ Ring.prototype._didFinishLaunching = function () {
       if (err) {
         self.log.error('refresh1', { username: self.config.username, diagnostic: err.toString() })
         self.doorbot = null
+        debug('reconnecting in 30s')
         return setTimeout(refresh, 30 * 1000)
       }
 
@@ -75,6 +76,7 @@ Ring.prototype._didFinishLaunching = function () {
         if (err) {
           self.log.error('refresh2', { username: self.config.username, diagnostic: err.toString() })
           self.doorbot = null
+          debug('reconnecting in 30s')
           return setTimeout(refresh, 30 * 1000)
         }
 
@@ -185,10 +187,13 @@ Ring.prototype._refresh1 = function (callback) {
 
   if (self.cycles++ % 10) return callback()
 
+  if (self.cycles === 1) debug('connecting')
   self.doorbot.devices(function (err, result) {
     var serialNumbers = []
 
     if (err) return callback(err)
+
+    if (self.cycles === 1) debug('connected')
 
     var handle_device = function (proto, kind, service) {
       var capabilities, properties
@@ -368,7 +373,7 @@ var Camera = function (platform, deviceId, service) {
     if (self.readings.floodlight == value) return callback()
 
     if (!self.doorbot) {
-      var err = new Error('not presently connected to service')
+      var err = new Error('not connected for updating floodlight')
 
       self.log.error('setValue', { deviceId: deviceId, diagnostic: err.toString() })
       return callback(err)
