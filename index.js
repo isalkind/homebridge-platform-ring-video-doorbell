@@ -299,7 +299,7 @@ Ring.prototype._refresh2 = function (callback) {
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
-    debug('dings', result)
+    debug('new dings', result)
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
@@ -307,7 +307,7 @@ Ring.prototype._refresh2 = function (callback) {
     })
 
     var newdings = []
-    debug('lastdings', self.lastdings)
+    debug('before   ', self.lastdings)
     result.forEach(function (event) {
       var device
 
@@ -331,7 +331,7 @@ Ring.prototype._refresh2 = function (callback) {
       device._update.bind(device)(device.readings, true)
     })
 
-    debug('lastdings', self.lastdings)
+    debug('after    ', self.lastdings)
     callback()
   })
 }
@@ -366,6 +366,13 @@ var Camera = function (platform, deviceId, service) {
   debug('setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
     if (self.readings.floodlight == value) return callback()
+
+    if (!self.doorbot) {
+      var err = new Error('not presently connected to service')
+
+      self.log.error('setValue', underscore.extend({ deviceId: deviceId }, err))
+      return callback(err)
+    }
 
     debug ('set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
     self.readings.floodlight = value
