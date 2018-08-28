@@ -245,7 +245,7 @@ Ring.prototype._refresh1 = function (callback) {
     if (!result) return callback()
 
     if (result.doorbots) result.doorbots.forEach(function (service) { handle_device(Doorbot, 'doorbell', service) })
-    if (result.chimes) result.chimes.forEach(function (service) { handle_device(Chime, 'chime', service) })
+    if (result.chimes) result.chimes.forEach(function (service) { handle_device(undefined, 'chime', service) })
     if (result.stickup_cams) result.stickup_cams.forEach(function (service) { handle_device(Camera, 'camera', service) })
     if (result.base_stations) result.base_stations.forEach(function (service) { handle_device(undefined, 'station', service) })
 
@@ -349,12 +349,14 @@ var Doorbot = function (platform, deviceId, service) {
 }
 util.inherits(Doorbot, PushSensor)
 
+/* perhaps later...
 var Chime = function (platform, deviceId, service) {
   if (!(this instanceof Chime)) return new Chime(platform, deviceId, service)
 
   PushSensor.call(this, platform, deviceId, service)
 }
 util.inherits(Chime, PushSensor)
+ */
 
 var Camera = function (platform, deviceId, service) {
   var self = this
