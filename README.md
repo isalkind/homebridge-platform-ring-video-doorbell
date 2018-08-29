@@ -52,9 +52,9 @@ as shown in the [Eve App](https://www.evehome.com/en/eve-app):
 
 <img src='1.png' width='224' height='488' />
 
-## Motion Notifications
+## "Motion Detector" Notifications
 By using Apple's iOS Home app,
-you can enable notifications  when motion is detected, e.g.,
+you can enable notifications when motion is detected, e.g.,
 
 <img src='2.png' width='224' height='488' />
 
@@ -63,7 +63,7 @@ your reachable iOS devices will receive a notification, e.g.,
 
 <img src='3.png' width='224' height='488' />
 
-## Switch Actions
+## "Programmable Switch" Actions
 HomeKit allows you to creates rules that make use of the ringing of a doorbell.
 
 For example,
