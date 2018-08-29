@@ -32,7 +32,7 @@ Then all subsequent installations must be like this:
     sudo npm install -g --unsafe-perm homebridge-platform-ring-video-doorbell
 
 # Configuration
-Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
+Edit `~/.homebridge/config.json`, inside `"platforms": [ ... ]` add:
 
     { "platform"  : "ring-video-doorbell"
     , "name"      : "Doorbell"
@@ -40,9 +40,23 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
     , "password"  : "secret"
 
     , "options"   : { "retries": 5, "ttl": 5, "verboseP" : false }
+    , "ringing"   : { "event": "single", "motion": false }
     }
 
 The `options` line contains defaults, so you may omit it.
+
+The `ringing` line defines what events is generated when ringing occurs.
+The value for `event` is one of:
+
+- `"single"` (the default);
+
+- `"double"` (the default previous to version `0.9.0`); or,
+
+- `"long"`
+
+The value for `motion` is either `true` or `false` (the default) and indicates whether a doorbell ring should also trigger a
+motion detection event.
+
 
 # HomeKit Appearance
 Each doorbell appears as an appliance that is both a "programmable switch" and a "motion detector".
@@ -50,18 +64,21 @@ Each doorbell appears as an appliance that is both a "programmable switch" and a
 For example,
 as shown in the [Eve App](https://www.evehome.com/en/eve-app):
 
-<img src='1.png' width='224' height='488' />
+<img src='01.png' width='224' height='488' />
 
 ## "Motion Detector" Notifications
-By using Apple's iOS Home app,
-you can enable notifications when motion is detected, e.g.,
+Homekit allows you to enable notifications when motion is detected, e.g.,
 
-<img src='2.png' width='224' height='488' />
+<img src='00.png' width='224' height='488' />
+
+To enable notifications, you must use Apple's iOS Home app, e.g.,
+
+<img src='02.png' width='224' height='488' />
 
 Whenever motion is detected,
 your reachable iOS devices will receive a notification, e.g.,
 
-<img src='3.png' width='224' height='488' />
+<img src='03.png' width='224' height='488' />
 
 ## "Programmable Switch" Actions
 HomeKit allows you to creates rules that make use of the ringing of a doorbell.
@@ -69,23 +86,23 @@ HomeKit allows you to creates rules that make use of the ringing of a doorbell.
 For example,
 going from "Scenes" to "Rules" in the Eve App:
 
-<img src='4.png' width='224' height='488' />
-<img src='5.png' width='224' height='488' />
+<img src='04.png' width='224' height='488' />
+<img src='05.png' width='224' height='488' />
 
-You can drill down to adding a "trigger" for the doorbell when it rings:
+Drill down to adding a "trigger" for the doorbell when it rings:
 
-<img src='6.png' width='224' height='488' />
-<img src='7.png' width='224' height='488' />
+<img src='06.png' width='224' height='488' />
+<img src='07.png' width='224' height='488' />
 
 Optionally, the rule may be tailored to only fire when other "conditions" are met
 (e.g., during a certain time of day):
 
-<img src='8.png' width='224' height='488' />
+<img src='08.png' width='224' height='488' />
 
 Once those "conditions" are set,
 you define a "scene" that tells HomeKit what to do when the "trigger" and "conditions" are met:
 
-<img src='9.png' width='224' height='488' />
+<img src='09.png' width='224' height='488' />
 
 # Camera Integration
 Possibly soon.

@@ -43,6 +43,13 @@ var Ring = function (log, config, api) {
   if (this.options.retries < 1) this.options.retries = 5
   if (this.options.ttl < 1) this.options.ttl = 5
 
+  this.ringing = underscore.defaults(this.config.ringing || {}, { event: '', motion: false })
+  this.ringing.press = { double       : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
+                       , double_press : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
+                       , long         : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
+                       , long_press   : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
+                       }[this.ringing.event.toLowerCase()] || Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS
+
   this.discoveries = {}
   this.ringbots = {}
   this.lastdings = []
@@ -269,31 +276,30 @@ Ring.prototype._refresh1 = function (callback) {
 
 /*
 [
-  {
-    "id"                     : ...,
-    "id_str"                 : "...",
-    "state"                  : "ringing",
-    "protocol"               : "sip",
-    "doorbot_id"             : ...,
-    "doorbot_description"    : "Front Gate",
-    "device_kind"            : "doorbell",
-    "motion"                 : false,
-    "snapshot_url"           : "",
-    "kind"                   : "ding",
-    "sip_server_ip"          : "a.b.c.d"
-    "sip_server_port"        : "15063",
-    "sip_server_tls"         : "false",
-    "sip_session_id"         : "...",
-    "sip_from"               : "sip:...@ring.com",
-    "sip_to"                 : "sip:...@a.b.c.d:15063;transport=tcp",
-    "audio_jitter_buffer_ms" : 0,
-    "video_jitter_buffer_ms" : 0,
-    "sip_endpoints"          : null,
-    "expires_in"             : 171,
-    "now"                    : 1483114179.70994,
-    "optimization_level"     : 3,
-    "sip_token"              : "..."
-    "sip_ding_id"            : "..."
+  { "id"                     : ...
+  , "id_str"                 : "..."
+  , "state"                  : "ringing"
+  , "protocol"               : "sip"
+  , "doorbot_id"             : ...
+  , "doorbot_description"    : "Front Gate"
+  , "device_kind"            : "doorbell"
+  , "motion"                 : false
+  , "snapshot_url"           : ""
+  , "kind"                   : "ding"
+  , "sip_server_ip"          : "a.b.c.d
+  , "sip_server_port"        : "15063"
+  , "sip_server_tls"         : "false"
+  , "sip_session_id"         : "..."
+  , "sip_from"               : "sip:...@ring.com"
+  , "sip_to"                 : "sip:...@a.b.c.d:15063;transport=tcp"
+  , "audio_jitter_buffer_ms" : 0
+  , "video_jitter_buffer_ms" : 0
+  , "sip_endpoints"          : null
+  , "expires_in"             : 171
+  , "now"                    : 1483114179.70994
+  , "optimization_level"     : 3
+  , "sip_token"              : "...
+  , "sip_ding_id"            : "..."
   }
 ]
  */
@@ -304,39 +310,39 @@ Ring.prototype._refresh2 = function (callback) {
   self.doorbot.dings(function (err, result) {
     if (err) return callback(err)
 
-    debug('new dings', result)
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
-      underscore.extend(self.ringbots[deviceId].readings, { motion_detected: false, ringing: false })
+      var readings = self.ringbots[deviceId].readings
+      
+      delete readings.motion_detected
+      delete readings.ringing
     })
 
     var newdings = []
-    debug('before   ', self.lastdings)
     result.forEach(function (event) {
-      var device
+      var device = self.ringbots[event.doorbot_id]
 
       newdings.push(event.id_str)
-      if (((event.kind !== 'ding') && (event.kind !== 'motion'))
-              || (self.lastdings.indexOf(event.id_str) !== -1)) return debug('skipping', event)
-
-      device = self.ringbots[event.doorbot_id]
       if (!device) return self.log.error('dings/active: no device', event)
 
-      underscore.extend(device.readings, { motion_detected : (event.kind === 'motion') || (event.motion)
-                                         , ringing         : event.kind === 'ding'
-                                         })
+      if (((event.kind !== 'ding') && (event.kind !== 'motion'))
+              || (self.lastdings.indexOf(event.id_str) !== -1)) return
+
+      if ((event.kind === 'motion') || (event.motion)) device.readings.motion_detected = true
+      if (event.kind === 'ding') {
+        device.readings.ringing = self.ringing.press
+        if (self.ringing.motion) device.readings.motion_detected = true
+      }
     })
     self.lastdings = newdings
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
 
-      console.log('!!! update ' + device.name + ': ' + JSON.stringify(device.readings, null, 2))
       device._update.bind(device)(device.readings, true)
     })
 
-    debug('after    ', self.lastdings)
     callback()
   })
 }
