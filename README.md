@@ -42,7 +42,7 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
     , "options"   : { "retries": 5, "ttl": 5, "verboseP" : false }
     }
 
-The `options` line contains defaults, so it's entirely optional.
+The `options` line contains defaults, so you may omit it.
 
 # HomeKit Appearance
 Each doorbell appears as an appliance that is both a "programmable switch" and a "motion detector".
