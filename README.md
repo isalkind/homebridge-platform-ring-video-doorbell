@@ -44,13 +44,51 @@ Edit `~/.homebridge/config`, inside `"platforms": [ ... ]` add:
 
 The `options` line contains defaults, so it's entirely optional.
 
+# HomeKit Appearance
+Each doorbell appears as an appliance that is both a "programmable switch" and a "motion detector".
+
+For example,
+as shown in the [Eve App](https://www.evehome.com/en/eve-app):
+
+<img src='1.png' width='224' height='488' />
+
+## Motion Notifications
+By using Apple's iOS Home app,
+you can enable notifications  when motion is detected, e.g.,
+
+<img src='2.png' width='224' height='488' />
+
+Whenever motion is detected,
+your reachable iOS devices will receive a notification, e.g.,
+
+<img src='3.png' width='224' height='488' />
+
+## Switch Actions
+HomeKit allows you to creates rules that make use of the ringing of a doorbell.
+
+For example,
+going from "Scenes" to "Rules" in the Eve App:
+
+<img src='4.png' width='224' height='488' />
+<img src='5.png' width='224' height='488' />
+
+You can drill down to adding a "trigger" for the doorbell when it rings:
+
+<img src='6.png' width='224' height='488' />
+<img src='7.png' width='224' height='488' />
+
+Optionally, the rule may be tailored to only fire when other "conditions" are met
+(e.g., during a certain time of day):
+
+<img src='8.png' width='224' height='488' />
+
+Once those "conditions" are set,
+you define a "scene" that tells HomeKit what to do when the "trigger" and "conditions" are met:
+
+<img src='9.png' width='224' height='488' />
+
 # Camera Integration
-The current version of this plugin doesn't handle the camera available in the Ring Video doorbell;
-however,
-as noted by [@barkerja](https://github.com/barkerja),
-you can use the [camera plugin](https://github.com/KhaosT/homebridge-camera-ffmpeg),
-and place both accessories in the same "room".
-HomeKit manage the two accessories as one "seamless" device.
+Possibly soon.
 
 # Many Thanks
 Many thanks to [jeroenmoors](https://github.com/jeroenmoors) author of
