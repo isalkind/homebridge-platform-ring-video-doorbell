@@ -262,6 +262,9 @@ Ring.prototype._refresh1 = function (callback) {
     if (!result) return callback()
 
     if (result.doorbots) result.doorbots.forEach(function (service) { handle_device(Doorbot, 'doorbell', service) })
+    if (result.authorized_doorbots) result.authorized_doorbots.forEach(function (service) {
+      handle_device(Doorbot, 'doorbell', service)
+    })
     if (result.chimes) result.chimes.forEach(function (service) { handle_device(undefined, 'chime', service) })
     if (result.stickup_cams) result.stickup_cams.forEach(function (service) { handle_device(Camera, 'camera', service) })
     if (result.base_stations) result.base_stations.forEach(function (service) { handle_device(undefined, 'station', service) })
