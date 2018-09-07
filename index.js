@@ -196,11 +196,18 @@ Ring.prototype._refresh1 = function (callback) {
 
   if (self.cycles === 1) debug('connecting')
   self.doorbot.devices(function (err, result) {
-    var serialNumbers = []
+    var entries
+      , serialNumbers = []
 
     if (err) return callback(err)
 
-    if (self.cycles === 1) debug('connected', result ? underscore.keys(result) : 'empty')
+    if (self.cycles === 1) {
+      entries = ''
+      underscore.keys(result || {}).forEach(function (key) {
+        entries += ' ' + key + '=' + result[key].length
+      })
+      debug('connected', entries.length ? entries.trimLeft() : 'nothing reported!?!')
+    }
 
     var handle_device = function (proto, kind, service) {
       var capabilities, properties
