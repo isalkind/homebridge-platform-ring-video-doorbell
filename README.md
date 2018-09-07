@@ -54,8 +54,8 @@ The value for `event` is one of:
 
 - `"long"`
 
-The value for `motion` is either `true` or `false` (the default) and indicates whether a doorbell ring should also trigger a
-motion detection event.
+The value for `motion` is either `true` or `false` (the default) and indicates whether a second motion detector should be
+present to report doorbell rings.
 
 
 # HomeKit Appearance

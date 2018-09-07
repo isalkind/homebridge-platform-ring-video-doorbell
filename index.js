@@ -44,10 +44,10 @@ var Ring = function (log, config, api) {
   if (this.options.ttl < 1) this.options.ttl = 5
 
   this.ringing = underscore.defaults(this.config.ringing || {}, { event: '', motion: false })
-  this.ringing.press = { double       : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
-                       , double_press : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
-                       , long         : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
-                       , long_press   : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
+  this.ringing.press = { double         : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
+                       , 'double-press' : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
+                       , long           : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
+                       , 'long-press'   : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
                        }[this.ringing.event.toLowerCase()] || Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS
 
   this.discoveries = {}
@@ -143,7 +143,7 @@ Ring.prototype.configureAccessory = function (accessory) {
   , "external_connection"        : false
   , "firmware_version"           : "Up to Date"
   , "kind"                       : "jbox_v1"
-  , "latitude"                   : 39.8333333
+  , "latitude"                   :  39.833333
   , "longitude"                  : -98.585522
   , "address"                    : ".... .... .., Lebanon, KS 66952 USA"
   , "settings"                   : { ... }
@@ -211,7 +211,7 @@ Ring.prototype._refresh1 = function (callback) {
       if (!device) {
         if (!service.kind) service.kind = ''
         if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
-        if ((!service.battery_life) || (service.battery_life > 100)) {
+        if ((!service.battery_life) || (service.battery_life >= 100)) {
           types = underscore.difference(types, [ 'battery_level', 'battery_low'])
         }
         console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
@@ -244,6 +244,9 @@ Ring.prototype._refresh1 = function (callback) {
                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
                         , floodlight    : !service.led_status ? undefined : service.led_status !== 'off'
                         }
+// not necessary given the pushsensor's _update logic, but useful for debugging
+      device.readings = underscore.pick(device.readings, underscore.keys(device.capabilities))
+      debug(device.name, { readings: device.readings })
       device._update.bind(device)(device.readings, true)
 
       serialNumbers.push(service.id.toString())
@@ -340,6 +343,7 @@ Ring.prototype._refresh2 = function (callback) {
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
 
+      debug(device.name, { readings: device.readings })
       device._update.bind(device)(device.readings, true)
     })
 
@@ -380,7 +384,7 @@ var Camera = function (platform, deviceId, service) {
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
     if (self.readings.floodlight == value) return callback()
 
-    if (!self.doorbot) {
+    if (!self.platform.doorbot) {
       var err = new Error('not connected for updating floodlight')
 
       self.log.error('setValue', { deviceId: deviceId, diagnostic: err.toString() })
@@ -389,7 +393,7 @@ var Camera = function (platform, deviceId, service) {
 
     debug ('set value to ' + JSON.stringify(value) + ', currently ' + JSON.stringify(self.readings.floodlight))
     self.readings.floodlight = value
-    self.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
+    self.platform.doorbot[value ? 'lightOn' : 'lightOff']({ id: deviceId },
                                                  function (err, response, result) {/* jshint unused: false */
       debug('result from doorbot ' + (value ? 'lightOn' : 'lightOff') + ': errP=' + (!!err))
       if (err) {
