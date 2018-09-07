@@ -200,7 +200,7 @@ Ring.prototype._refresh1 = function (callback) {
 
     if (err) return callback(err)
 
-    if (self.cycles === 1) debug('connected')
+    if (self.cycles === 1) debug('connected', result ? underscore.keys(result) : 'empty')
 
     var handle_device = function (proto, kind, service) {
       var capabilities, properties
