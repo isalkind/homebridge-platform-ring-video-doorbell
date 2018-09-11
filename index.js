@@ -168,16 +168,17 @@ Ring.prototype.configureAccessory = function (accessory) {
  */
 
 var kinds =
-{ chime     : [ ]
-, chime_pro : [ ]
-, jbox_v1   : [ 'ringing',    'motion_detected' ]
-, hp_cam_v1 : [ 'floodlight', 'motion_detected' ]
-, lpd_v1    : [ 'ringing',    'motion_detected' ]
+{ chime          : [ ]
+, chime_pro      : [ ]
+, jbox_v1        : [ 'ringing',    'motion_detected' ]
+, hp_cam_v1      : [ 'floodlight', 'motion_detected' ]
+, lpd_v1         : [ 'ringing',    'motion_detected' ]
+, stickup_cam    : [ 'motion_detected' ]
 /*
-, dpd_v3    : [ ]
-, dpd_v4    : [ ]
-, hp_cam_v2 : [ 'floodlight', 'motion_detected' ]
-, lpd_v2    : [ 'ringing', 'motion_detected' ]
+, dpd_v3         : [ ]
+, dpd_v4         : [ ]
+, hp_cam_v2      : [ 'floodlight', 'motion_detected' ]
+, lpd_v2         : [ 'ringing', 'motion_detected' ]
 , stickup_cam_v3 : [ ]
 , stickup_cam_v4 : [ ]
  */
@@ -218,8 +219,9 @@ Ring.prototype._refresh1 = function (callback) {
       if (!device) {
         if (!service.kind) service.kind = ''
         if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
+        if (service.kind.indexOf('stickup_cam') === 0) types = underscore.difference(types, [ 'floodlight' ])
         if ((!service.battery_life) || (service.battery_life >= 100)) {
-          types = underscore.difference(types, [ 'battery_level', 'battery_low'])
+          types = underscore.difference(types, [ 'battery_level', 'battery_low' ])
         }
         console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
                     ' types=' + JSON.stringify(types) +
