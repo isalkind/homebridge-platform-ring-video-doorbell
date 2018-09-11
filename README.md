@@ -80,6 +80,12 @@ your reachable iOS devices will receive a notification, e.g.,
 
 <img src='03.png' width='224' height='488' />
 
+However,
+for your doorbell to generate motion notifications,
+you must use the [Ring App](https://itunes.apple.com/app/ring-doorbell/id926252661?mt=8) to enable "Motion Alerts", e.g.,
+
+<img src='10.png' width='224' height='488' />
+
 ## "Programmable Switch" Actions
 HomeKit allows you to creates rules that make use of the ringing of a doorbell.
 
