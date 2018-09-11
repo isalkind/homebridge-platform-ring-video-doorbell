@@ -219,7 +219,7 @@ Ring.prototype._refresh1 = function (callback) {
       if (!device) {
         if (!service.kind) service.kind = ''
         if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
-        if (service.kind.indexOf('stickup_cam') === 0) types = underscore.difference(types, [ 'floodlight' ])
+        if (!service.led_status) types = underscore.difference(types, [ 'floodlight' ])
         if ((!service.battery_life) || (service.battery_life >= 100)) {
           types = underscore.difference(types, [ 'battery_level', 'battery_low' ])
         }
@@ -389,6 +389,8 @@ var Camera = function (platform, deviceId, service) {
 
   PushSensor.call(this, platform, deviceId, service)
   
+  if (underscore.keys(service.capabilities).indexOf('floodlight') === -1) return
+
   floodlight = self.getAccessoryService(Service.Lightbulb)
   if (!floodlight) return self.log.warn('Camera', { err: 'could not find Service.Lightbulb' })
 
