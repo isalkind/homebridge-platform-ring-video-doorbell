@@ -3,7 +3,7 @@
 // there is no known webhook/websocket to use for events, this results in very frequent polling under the push-sensor model...
 
 var debug       = require('debug')('ring-video-doorbell')
-  , homespun    = require('homespun-discovery')
+  , homespun    = require('homespun-utilities')
   , pushsensor  = homespun.utilities.pushsensor
   , PushSensor  = pushsensor.Sensor
   , RingAPI     = require('doorbot')
