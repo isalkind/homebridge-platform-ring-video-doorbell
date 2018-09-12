@@ -40,7 +40,7 @@ Edit `~/.homebridge/config.json`, inside `"platforms": [ ... ]` add:
     , "password"  : "secret"
 
     , "options"   : { "retries": 5, "ttl": 5, "verboseP" : false }
-    , "ringing"   : { "event": "single", "motion": false }
+    , "ringing"   : { "event": "single", "notifications": false }
     }
 
 The `options` line contains defaults, so you may omit it.

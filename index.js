@@ -43,7 +43,7 @@ var Ring = function (log, config, api) {
   if (this.options.retries < 1) this.options.retries = 5
   if (this.options.ttl < 1) this.options.ttl = 5
 
-  this.ringing = underscore.defaults(this.config.ringing || {}, { event: '', motion: false })
+  this.ringing = underscore.defaults(this.config.ringing || {}, { event: '', notifications: false })
   this.ringing.press = { double         : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
                        , 'double-press' : Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS
                        , long           : Characteristic.ProgrammableSwitchEvent.LONG_PRESS
@@ -223,6 +223,7 @@ Ring.prototype._refresh1 = function (callback) {
         if ((!service.battery_life) || (service.battery_life >= 100)) {
           types = underscore.difference(types, [ 'battery_level', 'battery_low' ])
         }
+        if ((types.indexOf('ringing') !== -1) && (self.ringing.notifications)) types.push('contact')
         console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
                     ' types=' + JSON.stringify(types) +
                     ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
@@ -332,6 +333,7 @@ Ring.prototype._refresh2 = function (callback) {
       
       delete readings.motion_detected
       delete readings.ringing
+      if (self.ringing.notifications) readings.contact = Characteristic.ContactSensorState.CONTACT_DETECTED
     })
 
     var newdings = []
@@ -347,7 +349,7 @@ Ring.prototype._refresh2 = function (callback) {
       if ((event.kind === 'motion') || (event.motion)) device.readings.motion_detected = true
       if (event.kind === 'ding') {
         device.readings.ringing = self.ringing.press
-        if (self.ringing.motion) device.readings.motion_detected = true
+        if (self.ringing.notifications) device.readings.contact = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
       }
     })
     self.lastdings = newdings
