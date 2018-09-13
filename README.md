@@ -40,7 +40,7 @@ Edit `~/.homebridge/config.json`, inside `"platforms": [ ... ]` add:
     , "password"  : "secret"
 
     , "options"   : { "retries": 5, "ttl": 5, "verboseP" : false }
-    , "ringing"   : { "event": "single", "notifications": false }
+    , "ringing"   : { "event": "single", "motion": false, "contact": false }
     }
 
 The `options` line contains defaults, so you may omit it.
@@ -54,20 +54,27 @@ The value for `event` is one of:
 
 - `"long"`
 
-The value for `motion` is either `true` or `false` (the default) and indicates whether a second motion detector should be
-present to report doorbell rings.
+The value for `motion` is either `true` or `false` (the default) and indicates whether the motion detector should trigger
+when the doorbell rings.
 
+The value for `contact` is either `true` or `false` (the default) and indicates whether a contact sensor should be present that
+triggers to `OPEN` when the doorbell rings.
 
 # HomeKit Appearance
-Each doorbell appears as an appliance that is both a "programmable switch" and a "motion detector".
+Each doorbell appears as an accessory that is both a "programmable switch" and a "motion detector".
 
 For example,
 as shown in the [Eve App](https://www.evehome.com/en/eve-app):
 
 <img src='01.png' width='224' height='488' />
 
+In addition,
+if you set the `ringing` option to set `contact` and `false`,
+then a "contact sensor" is also present in the doorbell accessory,
+in which `OPEN` indicates a ringing doorbell.
+
 ## "Motion Detector" Notifications
-Homekit allows you to enable notifications when motion is detected, e.g.,
+Homekit allows you to enable notifications when motion is detected (or contact sensors are updated), e.g.,
 
 <img src='00.png' width='224' height='488' />
 
