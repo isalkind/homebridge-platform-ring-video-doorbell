@@ -170,15 +170,15 @@ Ring.prototype.configureAccessory = function (accessory) {
 var kinds =
 { chime          : [ ]
 , chime_pro      : [ ]
-, jbox_v1        : [ 'ringing',    'motion_detected' ]
-, hp_cam_v1      : [ 'floodlight', 'motion_detected' ]
+, jbox_v1        : [ 'ringing',    'motion_detected' ]    // Doorbell Elite
+, hp_cam_v1      : [ 'floodlight', 'motion_detected' ]    // Floodlight
 , lpd_v1         : [ 'ringing',    'motion_detected' ]
-, stickup_cam    : [ 'motion_detected' ]
+, lpd_v2         : [ 'ringing', 'motion_detected' ]       // Doorbell Pro
+, stickup_cam    : [ 'motion_detected' ]                  // Stickup Cam
 /*
 , dpd_v3         : [ ]
 , dpd_v4         : [ ]
 , hp_cam_v2      : [ 'floodlight', 'motion_detected' ]
-, lpd_v2         : [ 'ringing', 'motion_detected' ]
 , stickup_cam_v3 : [ ]
 , stickup_cam_v4 : [ ]
  */
