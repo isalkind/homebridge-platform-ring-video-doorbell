@@ -224,9 +224,9 @@ Ring.prototype._refresh1 = function (callback) {
           types = underscore.difference(types, [ 'battery_level', 'battery_low' ])
         }
         if ((types.indexOf('ringing') !== -1) && (self.ringing.contact)) types.push('contact')
-        console.log('\n!!! name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
-                    ' types=' + JSON.stringify(types) +
-                    ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
+        debug('device', 'name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
+              ' types=' + JSON.stringify(types) +
+              ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
         if (!proto) return
 
         capabilities = underscore.pick(sensorTypes, types)
