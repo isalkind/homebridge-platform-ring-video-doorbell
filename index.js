@@ -216,6 +216,9 @@ Ring.prototype._refresh1 = function (callback) {
         , device = self.ringbots[deviceId]
         , types = prototypes[kind]
 
+      if (service.battery_life) service.battery_life = parseFloat(service.battery_life)
+      if (isNaN(service.battery_life)) service.battery_life = 0
+
       if (!device) {
         if (!service.kind) service.kind = ''
         if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
@@ -224,6 +227,7 @@ Ring.prototype._refresh1 = function (callback) {
           types = underscore.difference(types, [ 'battery_level', 'battery_low' ])
         }
         if ((types.indexOf('ringing') !== -1) && (self.ringing.contact)) types.push('contact')
+        debug('before', { types: prototypes[kind] })
         debug('device', 'name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
               ' types=' + JSON.stringify(types) +
               ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
@@ -248,11 +252,12 @@ Ring.prototype._refresh1 = function (callback) {
       }
 
       device.readings = { battery_level : service.battery_life
-                        , battery_low   : (service.alerts) && (service.alerts.battery == 'low')
+                        , battery_low   : (service.alerts) && (service.alerts.battery === 'low')
                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
                                               : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL
                         , reachability  : (service.alerts) && (service.alerts.connection !== 'offline')
                         , floodlight    : !service.led_status ? undefined : service.led_status !== 'off'
+                        , contact       : Characteristic.ContactSensorState.CONTACT_DETECTED
                         }
 // not necessary given the pushsensor's _update logic, but useful for debugging
       device.readings = underscore.pick(device.readings, underscore.keys(device.capabilities))
@@ -399,7 +404,7 @@ var Camera = function (platform, deviceId, service) {
 
   debug('setting callback for on/off')
   floodlight.getCharacteristic(Characteristic.On).on('set', function (value, callback) {
-    if (self.readings.floodlight == value) return callback()
+    if (self.readings.floodlight === value) return callback()
 
     if (!self.platform.doorbot) {
       var err = new Error('not connected for updating floodlight')
