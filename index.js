@@ -196,7 +196,9 @@ Ring.prototype._refresh1 = function (callback) {
   if (self.cycles++ % 10) return callback()
 
   if (self.cycles === 1) debug('connecting')
+  debug('_refresh1 begins')
   self.doorbot.devices(function (err, result) {
+    debug('_refresh1 returns errP=' + (!!err))
     var entries
       , serialNumbers = []
 
@@ -328,7 +330,9 @@ Ring.prototype._refresh1 = function (callback) {
 Ring.prototype._refresh2 = function (callback) {
   var self = this
 
+  debug('_refresh2 begins')
   self.doorbot.dings(function (err, result) {
+    debug('_refresh2 returns errP=' + (!!err))
     if (err) return callback(err)
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
