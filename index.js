@@ -52,7 +52,6 @@ var Ring = function (log, config, api) {
 
   this.discoveries = {}
   this.ringbots = {}
-  this.lastdings = []
 
   if (api) this.api.on('didFinishLaunching', this._didFinishLaunching.bind(this))
   else this._didFinishLaunching()
@@ -168,19 +167,20 @@ Ring.prototype.configureAccessory = function (accessory) {
  */
 
 var kinds =
-{ chime          : [ ]
-, chime_pro      : [ ]
-, jbox_v1        : [ 'ringing',    'motion_detected' ]    // Doorbell Elite
-, hp_cam_v1      : [ 'floodlight', 'motion_detected' ]    // Floodlight
-, lpd_v1         : [ 'ringing',    'motion_detected' ]
-, lpd_v2         : [ 'ringing', 'motion_detected' ]       // Doorbell Pro
-, stickup_cam    : [ 'motion_detected' ]                  // Stickup Cam
+{ chime           : [ ]
+, chime_pro       : [ ]
+, base_station_v1 : [ ]
+, jbox_v1         : [ 'ringing',    'motion_detected' ]    // Doorbell Elite
+, hp_cam_v1       : [ 'floodlight', 'motion_detected' ]    // Floodlight
+, lpd_v1          : [ 'ringing',    'motion_detected' ]
+, lpd_v2          : [ 'ringing', 'motion_detected' ]       // Doorbell Pro
+, stickup_cam     : [ 'motion_detected' ]                  // Stickup Cam
 /*
-, dpd_v3         : [ ]
-, dpd_v4         : [ ]
-, hp_cam_v2      : [ 'floodlight', 'motion_detected' ]
-, stickup_cam_v3 : [ ]
-, stickup_cam_v4 : [ ]
+, dpd_v3          : [ ]
+, dpd_v4          : [ ]
+, hp_cam_v2       : [ 'floodlight', 'motion_detected' ]
+, stickup_cam_v3  : [ ]
+, stickup_cam_v4  : [ ]
  */
 }
 
@@ -190,15 +190,15 @@ var prototypes =
 , doorbell  : [ 'battery_level', 'battery_low', 'ringing', 'motion_detected' ]
 }
 
+var seen = {}
+
 Ring.prototype._refresh1 = function (callback) {
   var self = this
 
   if (self.cycles++ % 10) return callback()
 
   if (self.cycles === 1) debug('connecting')
-  debug('_refresh1 begins')
   self.doorbot.devices(function (err, result) {
-    debug('_refresh1 returns errP=' + (!!err))
     var entries
       , serialNumbers = []
 
@@ -216,12 +216,15 @@ Ring.prototype._refresh1 = function (callback) {
       var capabilities, properties
         , deviceId = service.id
         , device = self.ringbots[deviceId]
+        , serialNumber = service.id.toString()
         , types = prototypes[kind]
 
       if (service.battery_life) service.battery_life = parseFloat(service.battery_life)
       if (isNaN(service.battery_life)) service.battery_life = 0
 
       if (!device) {
+        if (seen[serialNumber]) return
+
         if (!service.kind) service.kind = ''
         if (!kinds[service.kind]) self.log.warn(kind, { err: 'no entry for ' + service.kind})
         if (!service.led_status) types = underscore.difference(types, [ 'floodlight' ])
@@ -233,18 +236,19 @@ Ring.prototype._refresh1 = function (callback) {
         debug('device', 'name=' + service.description + ' kind=' + kind + ' model=' + service.kind +
               ' types=' + JSON.stringify(types) +
               ' notices=' + JSON.stringify(underscore.pick(service, [ 'alerts', 'battery_life' ])))
+        seen[serialNumber] = true
         if (!proto) return
 
         capabilities = underscore.pick(sensorTypes, types)
         properties = { name             : service.description
                      , manufacturer     : 'Bot Home Automation, Inc.'
                      , model            : service.kind
-                     , serialNumber     : service.id.toString()
+                     , serialNumber     : serialNumber
                      , firmwareRevision : service.firmware_version
                      , hardwareRevision : ''
                      }
 
-        device = new proto(self, service.id.toString(), { capabilities: capabilities, properties: properties })
+        device = new proto(self, serialNumber, { capabilities: capabilities, properties: properties })
         self.ringbots[deviceId] = device
 /*
         self.doorbot.vod({ id: deviceId }, function (err, result) {
@@ -263,10 +267,12 @@ Ring.prototype._refresh1 = function (callback) {
                         }
 // not necessary given the pushsensor's _update logic, but useful for debugging
       device.readings = underscore.pick(device.readings, underscore.keys(device.capabilities))
+/*
       debug(device.name, { readings: device.readings })
+ */
       device._update.bind(device)(device.readings, true)
 
-      serialNumbers.push(service.id.toString())
+      serialNumbers.push(serialNumber)
     }
 
     if (!result) return callback()
@@ -330,9 +336,7 @@ Ring.prototype._refresh1 = function (callback) {
 Ring.prototype._refresh2 = function (callback) {
   var self = this
 
-  debug('_refresh2 begins')
   self.doorbot.dings(function (err, result) {
-    debug('_refresh2 returns errP=' + (!!err))
     if (err) return callback(err)
 
     if (!util.isArray(result)) return callback(new Error('not an Array: ' + typeof result))
@@ -345,16 +349,16 @@ Ring.prototype._refresh2 = function (callback) {
       if (self.ringing.contact) readings.contact = Characteristic.ContactSensorState.CONTACT_DETECTED
     })
 
-    var newdings = []
+    if (result.length > 0) {
+      debug('dings', result)
+      debug('opts ', self.ringing)
+    }
     result.forEach(function (event) {
       var device = self.ringbots[event.doorbot_id]
 
-      newdings.push(event.id_str)
-      if (!device) return self.log.error('dings/active: no device', event)
+      if (!device) return self.log.error('ding: no device', event)
 
-      if (((event.kind !== 'ding') && (event.kind !== 'motion'))
-              || (self.lastdings.indexOf(event.id_str) !== -1)) return
-
+      debug('handle', underscore.pick(event, [ 'kind', 'motion' ]))
       if ((event.kind === 'motion') || (event.motion)) device.readings.motion_detected = true
       if (event.kind === 'ding') {
         device.readings.ringing = self.ringing.press
@@ -362,12 +366,15 @@ Ring.prototype._refresh2 = function (callback) {
         if (self.ringing.contact) device.readings.contact = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
       }
     })
-    self.lastdings = newdings
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var device = self.ringbots[deviceId]
 
-      debug(device.name, { readings: device.readings })
+      if (device.readings.ringing
+            || device.readings.motion_detected
+            || (device.readings.contact === Characteristic.ContactSensorState.CONTACT_NOT_DETECTED)) {
+        debug(device.name, { readings: device.readings })
+      }
       device._update.bind(device)(device.readings, true)
     })
 
