@@ -257,6 +257,9 @@ Ring.prototype._refresh1 = function (callback) {
  */
       }
 
+      // capture current device readings so we can restore them
+      // after the initialization code below
+      let currentReadings = device.readings
       device.readings = { battery_level : service.battery_life
                         , battery_low   : (service.alerts) && (service.alerts.battery === 'low')
                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
@@ -265,6 +268,14 @@ Ring.prototype._refresh1 = function (callback) {
                         , floodlight    : !service.led_status ? undefined : service.led_status !== 'off'
                         , contact       : Characteristic.ContactSensorState.CONTACT_DETECTED
                         }
+      // restore device readings as necessary
+      if (currentReadings) {
+        // motion detected is important to restore to correctly set the sensor state
+        if (typeof currentReadings.motion_detected != "undefined") {
+          device.readings.motion_detected = currentReadings.motion_detected
+        }
+      }
+
 // not necessary given the pushsensor's _update logic, but useful for debugging
       device.readings = underscore.pick(device.readings, underscore.keys(device.capabilities))
 /*
@@ -343,9 +354,14 @@ Ring.prototype._refresh2 = function (callback) {
 
     underscore.keys(self.ringbots).forEach(function (deviceId) {
       var readings = self.ringbots[deviceId].readings
-      
+
       delete readings.ringing
-      delete readings.motion_detected
+
+      // if motion is currently detected, then set it to false so
+      // that the sensor will get turned off properly
+      if (readings.motion_detected) readings.motion_detected = false
+      else delete readings.motion_detected
+
       if (self.ringing.contact) readings.contact = Characteristic.ContactSensorState.CONTACT_DETECTED
     })
 
@@ -407,7 +423,7 @@ var Camera = function (platform, deviceId, service) {
   var floodlight
 
   PushSensor.call(this, platform, deviceId, service)
-  
+
   if (underscore.keys(service.capabilities).indexOf('floodlight') === -1) return
 
   floodlight = self.getAccessoryService(Service.Lightbulb)
@@ -434,7 +450,7 @@ var Camera = function (platform, deviceId, service) {
       } else {
         self._update.bind(self)({ floodlight: value })
       }
-       
+
       callback()
     })
     debug('setting value to ' + JSON.stringify(value))
