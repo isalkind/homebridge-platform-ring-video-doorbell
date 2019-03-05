@@ -271,9 +271,7 @@ Ring.prototype._refresh1 = function (callback) {
       // restore device readings as necessary
       if (currentReadings) {
         // motion detected is important to restore to correctly set the sensor state
-        if (typeof currentReadings.motion_detected != "undefined") {
-          device.readings.motion_detected = currentReadings.motion_detected
-        }
+        device.readings.motion_detected = currentReadings.motion_detected
       }
 
 // not necessary given the pushsensor's _update logic, but useful for debugging
