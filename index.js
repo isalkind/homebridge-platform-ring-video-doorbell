@@ -259,7 +259,7 @@ Ring.prototype._refresh1 = function (callback) {
 
       // capture current device readings so we can restore them
       // after the initialization code below
-      let currentReadings = device.readings
+      var currentReadings = device.readings
       device.readings = { battery_level : service.battery_life
                         , battery_low   : (service.alerts) && (service.alerts.battery === 'low')
                                               ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
